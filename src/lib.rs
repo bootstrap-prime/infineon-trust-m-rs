@@ -2,6 +2,11 @@ use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::timer::CountDown;
 
+use systick::{
+    delay::{delay_ms, delay_us},
+    micros, millis,
+};
+
 pub struct OptigaTrustM<RSTPin, VCCPin, I2CPin, TIMER>
 where
     RSTPin: OutputPin,
@@ -45,6 +50,21 @@ where
             pwr,
             timer,
         }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn rust_hal_timer_delay_ms(&mut self, milliseconds: u16) {
+        delay_ms(milliseconds.into());
+    }
+
+    #[no_mangle]
+    pub extern "C" fn rust_hal_timer_get_time_ms(&mut self) -> u32 {
+        millis() as u32
+    }
+
+    #[no_mangle]
+    pub extern "C" fn rust_hal_timer_get_time_us(&mut self) -> u32 {
+        micros() as u32
     }
 
     #[no_mangle]

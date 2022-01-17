@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 cc = "1.0.72"
+systick = { git = "https://github.com/sourcebox/cortex-m-systick-rs", package = "cortex-m-systick" }
 embedded-hal = "0.2.6"
