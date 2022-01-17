@@ -1,15 +1,18 @@
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::timer::CountDown;
 
-pub struct OptigaTrustM<RSTPin, VCCPin, I2CPin>
+pub struct OptigaTrustM<RSTPin, VCCPin, I2CPin, TIMER>
 where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    TIMER: CountDown,
 {
     i2c: I2CPin,
     rst: RSTPin,
     pwr: VCCPin,
+    timer: TIMER,
 }
 
 enum VDDorRST {
@@ -22,18 +25,20 @@ enum VDDorRST {
 // https://github.com/Infineon/arduino-optiga-trust-m/blob/master/src/optiga_trustm/pal_os_event_arduino.cpp
 // https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 
-impl<RSTPin, VCCPin, I2CPin> OptigaTrustM<RSTPin, VCCPin, I2CPin>
+#[allow(no_mangle_generic_items)]
+impl<RSTPin, VCCPin, I2CPin, TIMER> OptigaTrustM<RSTPin, VCCPin, I2CPin, TIMER>
 where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    TIMER: CountDown,
 {
     pub fn new(
         rst: RSTPin,
         pwr: VCCPin,
         i2c: I2CPin,
         timer: TIMER,
-    ) -> OptigaTrustM<RSTPin, VCCPin, I2CPin> {
+    ) -> OptigaTrustM<RSTPin, VCCPin, I2CPin, TIMER> {
         OptigaTrustM {
             i2c,
             rst,
@@ -42,58 +47,47 @@ where
         }
     }
 
-    fn write_register(&mut self, reg: Register, byte: &[u8]) {}
+    #[no_mangle]
+    pub extern "C" fn rust_hal_gpio_set_high(&mut self, context: pal_gpio_t) -> bool {
+        match context.p_gpio_hw as u8 {
+            0 => self.pwr.set_high().is_ok(),
+            1 => self.rst.set_high().is_ok(),
+            _ => unreachable!(),
+        }
+    }
 
-    fn read_register(&mut self, reg: Register, byte: &mut [u8]) {}
-}
+    #[no_mangle]
+    pub extern "C" fn rust_hal_gpio_set_low(&mut self, context: pal_gpio_t) -> bool {
+        match context.p_gpio_hw as u8 {
+            0 => self.pwr.set_low().is_ok(),
+            1 => self.rst.set_low().is_ok(),
+            _ => unreachable!(),
+        }
+    }
 
-enum I2CMode {
-    Busy = 31,
-    ResponseReady = 30,
-    SoftReset = 27,
-    ContinueRead = 26,
-    RepeatedStart = 25,
-    ClockStretching = 24,
-    PresentLayer = 23,
-}
+    #[no_mangle]
+    pub extern "C" fn rust_hal_i2c_read(
+        &mut self,
+        context: *const pal_i2c_t,
+        data: *mut u8,
+        len: u16,
+    ) -> bool {
+        let mut data = unsafe { core::slice::from_raw_parts(data, len.into()) };
+        let addr = context.slave_address as u8;
 
-enum Register {
-    Data = 0x80,
-    DataLen = 0x81,
-    I2CState = 0x82,
-    BaseAddr = 0x83,
-    MaxSclFreq = 0x84,
-    GuardTime = 0x85,
-    TransTimeout = 0x86,
-    PwrSaveTimeout = 0x87,
-    SoftReset = 0x88,
-    I2CMode = 0x89,
-    // generated with
-    // let range = 0x90..=0x9F;
-    // let num: Vec<String> = (0x0_i32..=0xF_i32)
-    //             .map(|e| format!("{:#X}", e).to_owned())
-    //             .map(|e| e[2..].to_owned())
-    //             .collect();
+        self.i2c.read(addr, &mut data).is_ok()
+    }
 
-    // for (e, val) in num.iter().zip(range) {
-    //     println!("    AppState{} = {:#X},", e, val);
-    // }
-    AppState0 = 0x90,
-    AppState1 = 0x91,
-    AppState2 = 0x92,
-    AppState3 = 0x93,
-    AppState4 = 0x94,
-    AppState5 = 0x95,
-    AppState6 = 0x96,
-    AppState7 = 0x97,
-    AppState8 = 0x98,
-    AppState9 = 0x99,
-    AppStateA = 0x9A,
-    AppStateB = 0x9B,
-    AppStateC = 0x9C,
-    AppStateD = 0x9D,
-    AppStateE = 0x9E,
-    AppStateF = 0x9F,
-    ForIFXUse1 = 0xA0,
-    ForIFXUse2 = 0xA1,
+    #[no_mangle]
+    pub extern "C" fn rust_hal_i2c_write(
+        &mut self,
+        context: *const pal_i2c_t,
+        data: *mut u8,
+        len: u16,
+    ) -> bool {
+        let mut data = unsafe { core::slice::from_raw_parts(data, len.into()) };
+        let addr = context.slave_address as u8;
+
+        self.i2c.write(addr, &mut data).is_ok()
+    }
 }
