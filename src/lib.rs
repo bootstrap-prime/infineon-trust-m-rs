@@ -1,4 +1,14 @@
 #![no_std]
+// Safety: users must not define more than one module at a time.
+
+pub mod cbindings {
+    #![allow(dead_code)]
+    #![allow(non_camel_case_types)]
+    #![allow(broken_intra_doc_links)]
+    #![allow(non_upper_case_globals)]
+    #![allow(non_snake_case)]
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
 
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
@@ -16,7 +26,7 @@ where
     pwr: VCCPin,
 }
 
-pub trait OptigaResources {
+trait OptigaResources {
     fn set_rst_high(&mut self) -> bool;
     fn set_rst_low(&mut self) -> bool;
 
@@ -89,7 +99,10 @@ where
         // user will need to configure the systick timer
         let cursed_global_precursor = OptigaTrustM { i2c, rst, pwr };
         unsafe {
-            OPTIGA_TRUST_M_RESOURCES = Some(Box::new(cursed_global_precursor));
+            match &OPTIGA_TRUST_M_RESOURCES {
+                Some(_) => panic!("Optiga Trust M already defined! Cannot use two modules at the same time due to FFI nonsense."),
+                None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(cursed_global_precursor)),
+            }
         }
     }
 }
