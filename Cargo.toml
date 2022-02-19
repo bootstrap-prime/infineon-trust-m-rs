@@ -8,7 +8,7 @@ resolver = "2"
 
 [build-dependencies]
 cbindgen = "0.20"
-bindgen = "0.59"
+bindgen = { version = "0.59", default-features = false }
 cc = "1.0"
 anyhow = "1.0"
 walkdir = "2"
