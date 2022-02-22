@@ -1,6 +1,7 @@
 #![no_std]
 // Safety: users must not define more than one module at a time.
 
+// ignore all the errors in the generated rust bindings, otherwise this gets really annoying
 pub mod cbindings {
     #![allow(dead_code)]
     #![allow(non_camel_case_types)]
@@ -84,6 +85,7 @@ where
 {
 }
 
+// this global mutex badness is temporary, until we get capabilities
 extern crate alloc;
 use alloc::boxed::Box;
 static mut OPTIGA_TRUST_M_RESOURCES: Option<Box<dyn OptigaResources + Send>> = None;
