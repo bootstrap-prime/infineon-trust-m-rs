@@ -39,6 +39,7 @@
 #include "optiga_lib_logger.h"
 #include "optiga_lib_common_internal.h"
 #include "pal_os_memory.h"
+#include "optiga_cmd.h"
 
 extern void optiga_cmd_set_shielded_connection_option(optiga_cmd_t * me, uint8_t value,
                                                       uint8_t shielded_connection_option);
