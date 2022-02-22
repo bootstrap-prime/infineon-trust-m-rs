@@ -57,8 +57,11 @@ fn main() -> anyhow::Result<()> {
         .header("optiga-m/pal_os_event.h")
         .header("optiga-m/pal.h")
         .header("optiga-m/pal_os_timer.h")
+        .header("optiga-m/optiga_crypt.h")
+        .header("optiga-m/optiga_cmd.h")
         .header(rustbindings.to_str().unwrap())
         .clang_arg(format!("--target={}", target))
+        .layout_tests(false)
         .use_core()
         .ctypes_prefix("cty")
         .rustfmt_bindings(true)
@@ -70,7 +73,7 @@ fn main() -> anyhow::Result<()> {
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
 
-    println!("cargo:rustc-link-lib=optiga-m");
+    println!("cargo:rustc-link-lib=optiga-m.o");
 
     Ok(())
 }
