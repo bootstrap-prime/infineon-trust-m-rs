@@ -1,20 +1,5 @@
-[package]
-name = "optiga-m-sys"
-version = "0.1.0"
-edition = "2021"
-resolver = "2"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[build-dependencies]
-cbindgen = "0.20"
-bindgen = { version = "0.59", default-features = false }
-cc = "1.0"
-anyhow = "1.0"
-walkdir = "2"
-
-[dependencies]
-systick = { git = "https://github.com/sourcebox/cortex-m-systick-rs", package = "cortex-m-systick" }
-embedded-hal = "0.2.6"
-defmt = "0.3.0"
-cty = "0.2.2"
+[workspace]
+members = [
+  "optiga-m-sys",
+  "optiga-m"
+]

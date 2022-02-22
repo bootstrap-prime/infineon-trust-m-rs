@@ -99,11 +99,10 @@ where
 {
     pub fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
         // user will need to configure the systick timer
-        let cursed_global_precursor = OptigaTrustM { i2c, rst, pwr };
         unsafe {
             match &OPTIGA_TRUST_M_RESOURCES {
                 Some(_) => panic!("Optiga Trust M already defined! Cannot use two modules at the same time due to FFI nonsense."),
-                None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(cursed_global_precursor)),
+                None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst, pwr })),
             }
         }
     }
