@@ -1,5 +1,5 @@
 [package]
-name = "infineon-trust-m-rs"
+name = "optiga-m-sys"
 version = "0.1.0"
 edition = "2021"
 resolver = "2"
