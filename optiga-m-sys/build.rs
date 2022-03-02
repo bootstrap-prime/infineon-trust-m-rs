@@ -65,6 +65,7 @@ fn main() -> anyhow::Result<()> {
         .use_core()
         .ctypes_prefix("cty")
         .rustfmt_bindings(true)
+        .fit_macro_constants(true)
         .generate()
         .expect("Unable to generate bindings");
 

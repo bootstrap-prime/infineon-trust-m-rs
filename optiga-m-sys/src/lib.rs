@@ -97,72 +97,62 @@ where
     VCCPin: OutputPin,
     I2CPin: Write + Read,
 {
-    pub fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
+    pub unsafe fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
         // user will need to configure the systick timer
-        unsafe {
-            match &OPTIGA_TRUST_M_RESOURCES {
-                Some(_) => panic!("Optiga Trust M already defined! Cannot use two modules at the same time due to FFI nonsense."),
-                None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst, pwr })),
-            }
+        match &OPTIGA_TRUST_M_RESOURCES {
+            Some(_) => panic!("Optiga Trust M already defined! Cannot use two modules at the same time due to FFI nonsense."),
+            None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst, pwr })),
         }
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_gpio_set_high(which_pin: u8) -> bool {
-    unsafe {
-        match &mut OPTIGA_TRUST_M_RESOURCES {
-            Some(periph) => match which_pin {
-                0 => periph.set_pwr_high(),
-                1 => periph.set_rst_high(),
-                _ => unreachable!(),
-            },
-            None => unreachable!(),
-        }
+pub unsafe extern "C" fn rust_hal_gpio_set_high(which_pin: u8) -> bool {
+    match &mut OPTIGA_TRUST_M_RESOURCES {
+        Some(periph) => match which_pin {
+            0 => periph.set_pwr_high(),
+            1 => periph.set_rst_high(),
+            _ => unreachable!(),
+        },
+        None => unreachable!(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_gpio_set_low(which_pin: u8) -> bool {
-    unsafe {
-        match &mut OPTIGA_TRUST_M_RESOURCES {
-            Some(periph) => match which_pin {
-                0 => periph.set_pwr_low(),
-                1 => periph.set_rst_low(),
-                _ => unreachable!(),
-            },
-            None => unreachable!(),
-        }
+pub unsafe extern "C" fn rust_hal_gpio_set_low(which_pin: u8) -> bool {
+    match &mut OPTIGA_TRUST_M_RESOURCES {
+        Some(periph) => match which_pin {
+            0 => periph.set_pwr_low(),
+            1 => periph.set_rst_low(),
+            _ => unreachable!(),
+        },
+        None => unreachable!(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_i2c_read(slave_address: u8, data: *mut u8, len: u16) -> bool {
-    let mut data = unsafe { core::slice::from_raw_parts_mut(data, len.into()) };
+pub unsafe extern "C" fn rust_hal_i2c_read(slave_address: u8, data: *mut u8, len: u16) -> bool {
+    let mut data = core::slice::from_raw_parts_mut(data, len.into());
 
-    unsafe {
-        match &mut OPTIGA_TRUST_M_RESOURCES {
-            Some(periph) => periph.read_i2c(slave_address, &mut data),
-            None => unreachable!(),
-        }
+    match &mut OPTIGA_TRUST_M_RESOURCES {
+        Some(periph) => periph.read_i2c(slave_address, &mut data),
+        None => unreachable!(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_i2c_write(slave_address: u8, data: *const u8, len: u16) -> bool {
-    let data = unsafe { core::slice::from_raw_parts(data, len.into()) };
+pub unsafe extern "C" fn rust_hal_i2c_write(slave_address: u8, data: *const u8, len: u16) -> bool {
+    let data = core::slice::from_raw_parts(data, len.into());
 
-    unsafe {
-        match &mut OPTIGA_TRUST_M_RESOURCES {
-            Some(periph) => periph.write_i2c(slave_address, data),
-            None => unreachable!(),
-        }
+    match &mut OPTIGA_TRUST_M_RESOURCES {
+        Some(periph) => periph.write_i2c(slave_address, data),
+        None => unreachable!(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_logger_log(log_data: *const u8, length: u32) {
-    let data = unsafe { core::slice::from_raw_parts(log_data, length as usize) };
+pub unsafe extern "C" fn rust_hal_logger_log(log_data: *const u8, length: u32) {
+    let data = core::slice::from_raw_parts(log_data, length as usize);
     let data = core::str::from_utf8(data).unwrap();
     defmt::warn!("{}", data);
 }
