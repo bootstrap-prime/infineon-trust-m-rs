@@ -86,6 +86,8 @@ where
 }
 
 // this global mutex badness is temporary, until we get capabilities
+// and lets callbacks get called without having to figure out how to inject
+// context. this isn't ideal.
 extern crate alloc;
 use alloc::boxed::Box;
 static mut OPTIGA_TRUST_M_RESOURCES: Option<Box<dyn OptigaResources + Send>> = None;
@@ -104,6 +106,14 @@ where
             None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst, pwr })),
         }
     }
+
+    // pub unsafe fn decompose() -> (RSTPin, VCCPin, I2CPin) {
+    //     use core::any::Any;
+    //     match OPTIGA_TRUST_M_RESOURCES {
+    //         Some(a) => a.downcast_ref::<OptigaTrustM>(),
+    //         None => panic!("Attempting to decompose Optiga before it has been initialized!"),
+    //     }
+    // }
 }
 
 #[no_mangle]
@@ -158,16 +168,91 @@ pub unsafe extern "C" fn rust_hal_logger_log(log_data: *const u8, length: u32) {
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_timer_delay_ms(milliseconds: u16) {
+pub unsafe extern "C" fn rust_hal_timer_delay_ms(milliseconds: u16) {
     delay_ms(milliseconds.into());
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_timer_get_time_ms() -> u32 {
+pub unsafe extern "C" fn rust_hal_timer_get_time_ms() -> u32 {
     millis() as u32
 }
 
 #[no_mangle]
-pub extern "C" fn rust_hal_timer_get_time_us() -> u32 {
+pub unsafe extern "C" fn rust_hal_timer_get_time_us() -> u32 {
     micros() as u32
+}
+
+static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = None;
+
+// handle the callback stack
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_destroy(event: *mut cbindings::pal_os_event_t) {
+    pal_os_event_0 = None;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_create(
+    callback: cbindings::register_callback,
+    callback_args: *mut cty::c_void,
+) -> *mut cbindings::pal_os_event_t {
+    if !callback.is_some() && !callback_args.is_null() {
+        pal_os_event_0 = Some(cbindings::pal_os_event {
+            is_event_triggered: false as u8,
+            callback_registered: callback,
+            callback_ctx: callback_args,
+            os_timer: core::ptr::null_mut(),
+        });
+    }
+
+    return &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_trigger_registered_callback() {
+    if let Some(event) = pal_os_event_0 {
+        if event.is_event_triggered != 0 {
+            let mut event = pal_os_event_0.take().unwrap();
+            event.is_event_triggered = true as u8;
+            let callback = event.callback_registered.take().unwrap();
+            callback(event.callback_ctx);
+        }
+    }
+}
+
+// pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
+//     p_pal_os_event: *mut pal_os_event_t,
+//     callback: register_callback,
+//     callback_args: *mut c_void,
+//     time_us: u32,
+// ) {
+// }
+
+// pub unsafe extern "C" fn pal_os_event_start(
+//     p_pal_os_event: *mut pal_os_event_t,
+//     callback: register_callback,
+//     callback_args: *mut c_void,
+// ) {
+// }
+
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event_t) {
+    (*p_pal_os_event).is_event_triggered = false as u8;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_process() {}
+
+// Timer implementation
+type callback = unsafe extern "C" fn(arg1: *mut cty::c_void);
+
+pub mod Timer {
+    pub struct Timer<const MAX_EVENTS: usize = 10> {
+        events_todo: [Event; MAX_EVENTS],
+    }
+
+    struct Event {
+        callback: super::callback,
+        context: *mut cty::c_void,
+        delay: u32,
+    }
 }
