@@ -29,7 +29,7 @@ pub struct OptigaM {
     lib_util: *mut optiga_crypt_t,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum CmdError {
     Unspecified = cbindings::OPTIGA_CMD_ERROR,
@@ -37,7 +37,7 @@ pub enum CmdError {
     MemoryInsufficient = cbindings::OPTIGA_CMD_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum CommsError {
     Unspecified = cbindings::OPTIGA_COMMS_ERROR,
@@ -49,7 +49,7 @@ pub enum CommsError {
     StackMemory = cbindings::OPTIGA_COMMS_ERROR_STACK_MEMORY,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum CryptError {
     Unspecified = cbindings::OPTIGA_CRYPT_ERROR,
@@ -58,7 +58,7 @@ pub enum CryptError {
     MemoryInsufficient = cbindings::OPTIGA_CRYPT_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum UtilError {
     InstanceInUse = cbindings::OPTIGA_UTIL_ERROR_INSTANCE_IN_USE,
@@ -66,13 +66,13 @@ pub enum UtilError {
     MemoryInsufficient = cbindings::OPTIGA_UTIL_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum DeviceError {
     Error = cbindings::OPTIGA_DEVICE_ERROR,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum Busy {
     Crypt = cbindings::OPTIGA_CRYPT_BUSY as u16,
@@ -82,7 +82,7 @@ pub enum Busy {
     // Lib = cbindings::OPTIGA_LIB_BUSY,
 }
 
-#[derive(num_enum::TryFromPrimitive)]
+#[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
 pub enum Successes {
     Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
@@ -92,6 +92,7 @@ pub enum Successes {
     // Util = cbindings::OPTIGA_UTIL_SUCCESS,
 }
 
+#[derive(Debug)]
 #[repr(u16)]
 pub enum OptigaStatus {
     Unknown(u16),
@@ -187,6 +188,19 @@ impl OptigaM {
 
         OptigaM { lib_util: me_util }
     }
+
+    // pub fn decompose<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(self) -> (
+    //     rst: RSTPin,
+    //     pwr: VCCPin,
+    //     i2c: I2CPin,
+    // )
+    // where
+    //     RSTPin: OutputPin,
+    //     VCCPin: OutputPin,
+    //     I2CPin: Write + Read,
+    // {
+    //     OptigaTrustM::decompose()
+    // }
 
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
         let mut hash_buffer: [u8; 32] = [0; 32];
