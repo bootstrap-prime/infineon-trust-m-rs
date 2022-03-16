@@ -35,13 +35,18 @@ fn main() -> anyhow::Result<()> {
         .include(&out_dir)
         .include("optiga-m")
         .static_flag(true)
+        // .define("OPTIGA_CRYPT_HASH_ENABLED", None)
         .files(
             walkdir::WalkDir::new("optiga-m")
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
                 .filter(|e| !e.file_type().is_dir())
-                .map(|file| file.into_path()),
+                .map(|file| file.into_path())
+                .filter(|e| {
+                    // Option<String> -> Option<bool> -> bool
+                    e.extension().map(|e| e == "c").unwrap_or_default()
+                }),
         )
         .compile("optiga-m-sys");
 
