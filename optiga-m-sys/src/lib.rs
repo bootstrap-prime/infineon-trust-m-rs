@@ -182,7 +182,10 @@ pub unsafe extern "C" fn rust_hal_timer_get_time_us() -> u32 {
     micros() as u32
 }
 
+use naive_timer::Timer;
+
 static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = None;
+static mut pal_os_event_cback_timer: Option<Timer> = None;
 
 // handle the callback stack
 #[no_mangle]
@@ -196,12 +199,11 @@ pub unsafe extern "C" fn pal_os_event_create(
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
     if !callback.is_some() && !callback_args.is_null() {
-        pal_os_event_0 = Some(cbindings::pal_os_event {
-            is_event_triggered: false as u8,
-            callback_registered: callback,
-            callback_ctx: callback_args,
-            os_timer: core::ptr::null_mut(),
-        });
+        pal_os_event_start(
+            &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t,
+            callback,
+            callback_args,
+        );
     }
 
     return &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
@@ -219,40 +221,69 @@ pub unsafe extern "C" fn pal_os_event_trigger_registered_callback() {
     }
 }
 
-// pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
-//     p_pal_os_event: *mut pal_os_event_t,
-//     callback: register_callback,
-//     callback_args: *mut c_void,
-//     time_us: u32,
-// ) {
-// }
-
-// pub unsafe extern "C" fn pal_os_event_start(
-//     p_pal_os_event: *mut pal_os_event_t,
-//     callback: register_callback,
-//     callback_args: *mut c_void,
-// ) {
-// }
-
 #[no_mangle]
-pub unsafe extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event_t) {
-    (*p_pal_os_event).is_event_triggered = false as u8;
+pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
+    p_pal_os_event: *mut cbindings::pal_os_event_t,
+    callback: cbindings::register_callback,
+    callback_args: *mut cty::c_void,
+    time_us: u32,
+) {
+    let os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
+
+    *os_event = cbindings::pal_os_event {
+        is_event_triggered: false as u8,
+        callback_registered: callback,
+        callback_ctx: callback_args,
+        os_timer: core::ptr::null_mut(),
+    };
+
+    struct CallbackCtx(*mut cty::c_void);
+    unsafe impl Send for CallbackCtx {}
+    unsafe impl Sync for CallbackCtx {}
+    impl CallbackCtx {
+        unsafe fn callfunc(self, callback: cbindings::register_callback) {
+            if let Some(callback) = callback {
+                let CallbackCtx(context) = self;
+                callback(context);
+            }
+        }
+    }
+
+    let context = CallbackCtx(os_event.callback_ctx);
+
+    let timer: &mut _ = pal_os_event_cback_timer.get_or_insert(Timer::default());
+
+    timer.add(
+        core::time::Duration::from_micros(time_us as u64 + systick::micros()),
+        |_| {
+            context.callfunc(os_event.callback_registered);
+        },
+    );
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_os_event_process() {}
+pub unsafe extern "C" fn pal_os_event_start(
+    p_pal_os_event: *mut cbindings::pal_os_event_t,
+    callback: cbindings::register_callback,
+    callback_args: *mut cty::c_void,
+) {
+    let mut os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
 
-// Timer implementation
-type callback = unsafe extern "C" fn(arg1: *mut cty::c_void);
-
-pub mod Timer {
-    pub struct Timer<const MAX_EVENTS: usize = 10> {
-        events_todo: [Event; MAX_EVENTS],
+    if os_event.is_event_triggered == false as u8 {
+        os_event.is_event_triggered = true as u8;
+        pal_os_event_register_callback_oneshot(p_pal_os_event, callback, callback_args, 1000);
     }
+}
 
-    struct Event {
-        callback: super::callback,
-        context: *mut cty::c_void,
-        delay: u32,
-    }
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event_t) {
+    let mut os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
+    os_event.is_event_triggered = false as u8;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pal_os_event_process() {
+    let timer: &mut _ = pal_os_event_cback_timer.get_or_insert(Timer::default());
+
+    timer.expire(core::time::Duration::from_micros(systick::micros()));
 }
