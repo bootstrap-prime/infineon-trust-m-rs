@@ -184,7 +184,14 @@ pub unsafe extern "C" fn rust_hal_timer_get_time_us() -> u32 {
 
 use naive_timer::Timer;
 
-static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = None;
+// Can't be a none value because sometimes a null callback is passed through, but a reference
+// to a valid event is always required.
+static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = Some(cbindings::pal_os_event {
+    is_event_triggered: false as u8,
+    callback_registered: None,
+    callback_ctx: core::ptr::null_mut(),
+    os_timer: core::ptr::null_mut(),
+});
 static mut pal_os_event_cback_timer: Option<Timer> = None;
 
 // handle the callback stack
@@ -287,3 +294,5 @@ pub unsafe extern "C" fn pal_os_event_process() {
 
     timer.expire(core::time::Duration::from_micros(systick::micros()));
 }
+
+mod calloc;
