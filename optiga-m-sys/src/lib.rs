@@ -142,6 +142,7 @@ pub unsafe extern "C" fn rust_hal_gpio_set_low(which_pin: u8) -> bool {
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_hal_i2c_read(slave_address: u8, data: *mut u8, len: u16) -> bool {
+    defmt::info!("read i2c");
     let mut data = core::slice::from_raw_parts_mut(data, len.into());
 
     match &mut OPTIGA_TRUST_M_RESOURCES {
@@ -152,6 +153,7 @@ pub unsafe extern "C" fn rust_hal_i2c_read(slave_address: u8, data: *mut u8, len
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_hal_i2c_write(slave_address: u8, data: *const u8, len: u16) -> bool {
+    defmt::info!("wrote i2c");
     let data = core::slice::from_raw_parts(data, len.into());
 
     match &mut OPTIGA_TRUST_M_RESOURCES {
@@ -169,16 +171,19 @@ pub unsafe extern "C" fn rust_hal_logger_log(log_data: *const u8, length: u32) {
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_hal_timer_delay_ms(milliseconds: u16) {
+    defmt::info!("delayed");
     delay_ms(milliseconds.into());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_hal_timer_get_time_ms() -> u32 {
+    defmt::info!("got time");
     millis() as u32
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn rust_hal_timer_get_time_us() -> u32 {
+    defmt::info!("got time");
     micros() as u32
 }
 

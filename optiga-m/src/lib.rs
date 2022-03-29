@@ -222,27 +222,35 @@ impl OptigaM {
             panic!("lib_util was dropped and is now a null pointer");
         }
 
+        use core::ptr::addr_of_mut;
+
         unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handleError(optiga_crypt_hash_start(
                 self.lib_util,
-                core::ptr::addr_of_mut!(hash_context),
+                addr_of_mut!(hash_context),
             ))?;
 
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+            defmt::info!("started hash");
+
+            // optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handleError(optiga_crypt_hash_update(
                 self.lib_util,
-                core::ptr::addr_of_mut!(hash_context),
+                addr_of_mut!(hash_context),
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 &hash_data_context as *const _ as *const c_void,
             ))?;
 
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+            defmt::info!("updated hash with data");
+
+            // optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handleError(optiga_crypt_hash_finalize(
                 self.lib_util,
-                core::ptr::addr_of_mut!(hash_context),
+                addr_of_mut!(hash_context),
                 hash_buffer.as_mut_ptr(),
             ))?;
+
+            defmt::info!("finalized hash, returning");
         }
 
         Ok(hash_buffer)
