@@ -11,14 +11,15 @@ fn main() -> anyhow::Result<()> {
     io_bindings
         .with_language(cbindgen::Language::C)
         .with_crate(&crate_dir)
-        .with_include(
-            crate_dir
-                .clone()
-                .join("optiga-m/pal_os_event.h")
-                .into_os_string()
-                .into_string()
-                .unwrap(),
-        )
+        // .with_include(
+        //     crate_dir
+        //         .clone()
+        //         .join("optiga-m/pal_os_event.h")
+        //         .into_os_string()
+        //         .into_string()
+        //         .unwrap(),
+        // )
+        .with_include("optiga-trust-m/optiga/include/optiga/")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(&rustbindings);
@@ -33,11 +34,11 @@ fn main() -> anyhow::Result<()> {
         .flag("-Wno-missing-field-initializers")
         .flag("-Werror-implicit-function-declaration")
         .include(&out_dir)
-        .include("optiga-m")
+        .include("optiga-trust-m/optiga/include/")
         .static_flag(true)
         // .define("OPTIGA_CRYPT_HASH_ENABLED", None)
         .files(
-            walkdir::WalkDir::new("optiga-m")
+            walkdir::WalkDir::new("optiga-trust-m/optiga/")
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
@@ -51,13 +52,16 @@ fn main() -> anyhow::Result<()> {
         .compile("optiga-m-sys");
 
     let bindings = bindgen::Builder::default()
-        .header("optiga-m/optiga_util.h")
-        .header("optiga-m/pal_os_event.h")
-        .header("optiga-m/pal.h")
-        .header("optiga-m/pal_os_timer.h")
-        .header("optiga-m/optiga_crypt.h")
-        .header("optiga-m/optiga_cmd.h")
+        .header("optiga-trust-m/optiga/include/optiga/optiga_util.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_event.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_timer.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_i2c.h")
+        .header("optiga-trust-m/optiga/include/optiga/optiga_crypt.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_logger.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_gpio.h")
         .clang_arg(format!("--target={}", target))
+        .clang_arg("-Ioptiga-trust-m/optiga/include/")
         .detect_include_paths(true)
         .layout_tests(false)
         .use_core()
@@ -71,6 +75,8 @@ fn main() -> anyhow::Result<()> {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+
+    println!("rerun-if-changed=./optiga-trust-m");
 
     Ok(())
 }
