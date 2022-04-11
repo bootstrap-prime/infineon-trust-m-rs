@@ -2,7 +2,8 @@
 
 use core::ffi::c_void;
 use core::fmt::Debug;
-use optiga_m_sys::cbindings::{self, optiga_util_t};
+use core::ptr::NonNull;
+use optiga_m_sys::cbindings::{self, optiga_util_open_application, optiga_util_t};
 use optiga_m_sys::cbindings::{
     hash_data_from_host, hash_data_from_host_t, optiga_crypt_create, optiga_crypt_hash_finalize,
     optiga_crypt_hash_start, optiga_crypt_hash_update, optiga_crypt_t, optiga_hash_context,
@@ -16,20 +17,17 @@ use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
 
 unsafe extern "C" fn optiga_util_callback(
-    context: *mut c_void,
+    _context: *mut c_void,
     return_status: optiga_lib_status_t,
 ) {
     optiga_lib_status = return_status;
-    // if NULL != context {
-    //     //callback to upper layer here
-    // }
 }
 
 static mut optiga_lib_status: optiga_lib_status_t = 0;
 
 pub struct OptigaM {
-    lib_crypt: *mut optiga_crypt_t,
-    lib_util: *mut optiga_util_t,
+    lib_crypt: NonNull<optiga_crypt_t>,
+    lib_util: NonNull<optiga_util_t>,
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
@@ -150,18 +148,6 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
 }
 
 impl OptigaM {
-    // unsafe fn optiga_wait_while_busy(return_status: u32) {
-    //     if OPTIGA_LIB_SUCCESS != return_status {
-    //         panic!("Failed at some point while waiting");
-    //     }
-    //     while OPTIGA_LIB_BUSY == optiga_lib_status.into() {
-    //         pal_os_event_process();
-    //     }
-    //     if OPTIGA_LIB_SUCCESS != return_status {
-    //         panic!("Called function failed");
-    //     }
-    // }
-
     pub fn new<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(
         rst: RSTPin,
         pwr: VCCPin,
@@ -178,42 +164,34 @@ impl OptigaM {
             OptigaTrustM::setup_new(rst, pwr, i2c);
         }
 
-        let lib_util = optiga_util_create(OPTIGA_INSTANCE_ID_0, optiga_util_callback);
-
-        if lib_util.is_null() {
-            panic!("optiga_util_create() returned a null pointer");
-        }
-
-        let lib_crypt = unsafe {
-            optiga_crypt_create(
-                OPTIGA_INSTANCE_ID_0 as u8,
+        let lib_util = unsafe {
+            let lib_util = NonNull::new(optiga_util_create(
+                OPTIGA_INSTANCE_ID_0,
                 Some(optiga_util_callback),
-                core::ptr::null_mut::<c_void>(),
-            )
+                core::ptr::null_mut(),
+            ))
+            .expect("optiga_util_create() returned a null pointer");
+
+            handle_error(optiga_util_open_application(lib_util.as_ptr(), false as u8))
+                .expect("was unable to initialize utility");
+
+            lib_util
         };
 
-        if lib_crypt.is_null() {
-            panic!("optiga_crypt_create() returned a null pointer");
-        }
+        let lib_crypt = unsafe {
+            NonNull::new(optiga_crypt_create(
+                OPTIGA_INSTANCE_ID_0 as u8,
+                Some(optiga_util_callback),
+                core::ptr::null_mut(),
+            ))
+            .expect("optiga_crypt_create() returned a null pointer")
+        };
 
         OptigaM {
             lib_util,
             lib_crypt,
         }
     }
-
-    // pub fn decompose<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(self) -> (
-    //     rst: RSTPin,
-    //     pwr: VCCPin,
-    //     i2c: I2CPin,
-    // )
-    // where
-    //     RSTPin: OutputPin,
-    //     VCCPin: OutputPin,
-    //     I2CPin: Write + Read,
-    // {
-    //     OptigaTrustM::decompose()
-    // }
 
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
         let mut hash_buffer: [u8; 32] = [0; 32];
@@ -231,39 +209,35 @@ impl OptigaM {
             length: bits_to_hash.len() as u32,
         };
 
-        if self.lib_util.is_null() {
-            panic!("lib_util was dropped and is now a null pointer");
-        }
-
         use core::ptr::addr_of_mut;
 
         unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_start(
-                self.lib_util,
+                self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
             ))?;
 
-            defmt::info!("started hash");
+            defmt::trace!("started hash");
 
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_update(
-                self.lib_util,
+                self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 &hash_data_context as *const _ as *const c_void,
             ))?;
 
-            defmt::info!("updated hash with data");
+            defmt::trace!("updated hash with data");
 
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_finalize(
-                self.lib_util,
+                self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
                 hash_buffer.as_mut_ptr(),
             ))?;
 
-            defmt::info!("finalized hash, returning");
+            defmt::trace!("finalized hash, returning");
         }
 
         Ok(hash_buffer)
