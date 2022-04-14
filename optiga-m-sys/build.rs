@@ -37,7 +37,6 @@ fn main() -> anyhow::Result<()> {
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
         .file("pal/pal_os_datastore.c")
-        .static_flag(true)
         .define("OPTIGA_LIB_EXTERNAL", "\"optiga_lib_config_external.h\"")
         .files(
             walkdir::WalkDir::new("optiga-trust-m/optiga/")
