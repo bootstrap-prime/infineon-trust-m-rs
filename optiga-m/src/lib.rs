@@ -109,25 +109,9 @@ pub enum OptigaStatus {
 
 impl From<u16> for OptigaStatus {
     fn from(numeric_error: u16) -> OptigaStatus {
-        use core::convert::TryFrom;
-
-        use OptigaStatus::*;
-        if let Ok(e) = numeric_error.try_into() {
-            Busy(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            Success(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CmdError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CommsError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CryptError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            UtilError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            DeviceError(e)
-        } else {
-            Unknown(numeric_error)
+        match numeric_error.try_into() {
+            Ok(e) => e,
+            Err(_e) => OptigaStatus::Unknown(numeric_error),
         }
     }
 }
@@ -154,9 +138,9 @@ impl OptigaM {
         i2c: I2CPin,
     ) -> OptigaM
     where
-        RSTPin: OutputPin + Debug,
-        VCCPin: OutputPin + Debug,
-        I2CPin: Write + Read + Debug,
+        RSTPin: OutputPin,
+        VCCPin: OutputPin,
+        I2CPin: Write + Read,
     {
         use optiga_m_sys::OptigaTrustM;
 

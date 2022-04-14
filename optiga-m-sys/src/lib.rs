@@ -47,9 +47,9 @@ enum VDDorRST {
 
 impl<RSTPin, VCCPin, I2CPin> OptigaResources for OptigaTrustM<RSTPin, VCCPin, I2CPin>
 where
-    RSTPin: OutputPin + Debug,
-    VCCPin: OutputPin + Debug,
-    I2CPin: Write + Read + Debug,
+    RSTPin: OutputPin,
+    VCCPin: OutputPin,
+    I2CPin: Write + Read,
 {
     fn set_rst_high(&mut self) -> bool {
         self.rst.set_high().is_ok()
@@ -96,9 +96,9 @@ static mut OPTIGA_TRUST_M_RESOURCES: Option<Box<dyn OptigaResources + Send>> = N
 #[allow(no_mangle_generic_items)]
 impl<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static> OptigaTrustM<RSTPin, VCCPin, I2CPin>
 where
-    RSTPin: OutputPin + Debug,
-    VCCPin: OutputPin + Debug,
-    I2CPin: Write + Read + Debug,
+    RSTPin: OutputPin,
+    VCCPin: OutputPin,
+    I2CPin: Write + Read,
 {
     pub unsafe fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
         // user will need to configure the systick timer
@@ -123,13 +123,3 @@ pub mod pal_i2c;
 pub mod pal_logger;
 pub mod pal_os_event;
 pub mod pal_os_timer;
-
-#[no_mangle]
-pub unsafe extern "C" fn pal_init() -> pal_status_t {
-    PAL_STATUS_SUCCESS.into()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn pal_deinit() -> pal_status_t {
-    PAL_STATUS_SUCCESS.into()
-}
