@@ -11,15 +11,12 @@ fn main() -> anyhow::Result<()> {
     io_bindings
         .with_language(cbindgen::Language::C)
         .with_crate(&crate_dir)
-        // .with_include(
-        //     crate_dir
-        //         .clone()
-        //         .join("optiga-m/pal_os_event.h")
-        //         .into_os_string()
-        //         .into_string()
-        //         .unwrap(),
-        // )
-        .with_include("optiga-trust-m/optiga/include/optiga/")
+        .with_include("optiga/pal/pal.h")
+        .with_include("optiga/pal/pal_gpio.h")
+        .with_include("optiga/pal/pal_i2c.h")
+        .with_include("optiga/pal/pal_logger.h")
+        .with_include("optiga/pal/pal_os_timer.h")
+        .with_include("optiga/pal/pal_os_event.h")
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(&rustbindings);
@@ -34,9 +31,14 @@ fn main() -> anyhow::Result<()> {
         .flag("-Wno-missing-field-initializers")
         .flag("-Werror-implicit-function-declaration")
         .include(&out_dir)
+        .include("pal")
         .include("optiga-trust-m/optiga/include/")
+        .include("optiga-trust-m/optiga/include/optiga/pal")
+        .file("pal/pal_os_lock.c")
+        .file("pal/pal_configures.c")
+        .file("pal/pal_os_datastore.c")
         .static_flag(true)
-        // .define("OPTIGA_CRYPT_HASH_ENABLED", None)
+        .define("OPTIGA_LIB_EXTERNAL", "\"optiga_lib_config_external.h\"")
         .files(
             walkdir::WalkDir::new("optiga-trust-m/optiga/")
                 .into_iter()
