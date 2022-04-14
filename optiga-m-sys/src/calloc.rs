@@ -28,7 +28,7 @@ fn malloc_table_init() -> &'static mut HashMap<*mut u8, Layout> {
 
 /// Allocator
 #[no_mangle]
-pub unsafe extern "C" fn malloc(size: cty::size_t) -> *mut cty::c_void {
+pub unsafe extern "C" fn pal_os_malloc(size: cty::size_t) -> *mut cty::c_void {
     //info!("malloc: {} bytes", size);
     let layout = Layout::from_size_align(size, mem::align_of::<u32>()).expect("Bad layout");
 
@@ -49,15 +49,15 @@ pub unsafe extern "C" fn malloc(size: cty::size_t) -> *mut cty::c_void {
     mem::transmute::<*mut u8, *mut cty::c_void>(mem)
 }
 #[no_mangle]
-pub unsafe extern "C" fn calloc(nmemb: cty::size_t, size: cty::size_t) -> *mut cty::c_void {
-    let mem = malloc(nmemb * size);
+pub unsafe extern "C" fn pal_os_calloc(nmemb: cty::size_t, size: cty::size_t) -> *mut cty::c_void {
+    let mem = pal_os_malloc(nmemb * size);
 
     ptr::write_bytes(mem, 0, nmemb * size);
 
     mem
 }
 #[no_mangle]
-pub unsafe extern "C" fn free(ptr: *mut cty::c_void) {
+pub unsafe extern "C" fn pal_os_free(ptr: *mut cty::c_void) {
     let ptr = mem::transmute::<*mut cty::c_void, *mut u8>(ptr);
 
     match malloc_table_init().remove(&ptr) {
