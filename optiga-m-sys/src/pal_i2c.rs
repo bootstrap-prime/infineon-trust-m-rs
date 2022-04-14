@@ -3,17 +3,16 @@ use crate::{
     OPTIGA_TRUST_M_RESOURCES,
 };
 
-use core::ptr::null_mut;
-use defmt::{dbg, info, trace};
+use defmt::{dbg, trace};
 
 // initializaiton/deinitialization and bitrate are handled by embedded_hal
 #[no_mangle]
-pub unsafe extern "C" fn pal_i2c_deinit(_p_i2c_context: *const pal_i2c_t) -> pal_status_t {
+pub unsafe extern "C" fn pal_i2c_init(_p_i2c_context: *const pal_i2c_t) -> pal_status_t {
     PAL_STATUS_SUCCESS.into()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_i2c_init(_p_i2c_context: *const pal_i2c_t) -> pal_status_t {
+pub unsafe extern "C" fn pal_i2c_deinit(_p_i2c_context: *const pal_i2c_t) -> pal_status_t {
     PAL_STATUS_SUCCESS.into()
 }
 

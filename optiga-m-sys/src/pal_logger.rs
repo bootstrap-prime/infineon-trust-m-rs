@@ -4,11 +4,13 @@ use cty::c_void;
 
 #[no_mangle]
 pub unsafe extern "C" fn pal_logger_init(_p_logger_context: *mut c_void) -> pal_status_t {
+    // placeholder, this is accomplished by defmt
     PAL_STATUS_SUCCESS.into()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn pal_logger_deinit(_p_logger_context: *mut c_void) -> pal_status_t {
+    // placeholder, this is accomplished by defmt
     PAL_STATUS_SUCCESS.into()
 }
 
@@ -18,6 +20,7 @@ pub unsafe extern "C" fn pal_logger_read(
     _p_log_data: *mut u8,
     _log_data_length: u32,
 ) -> pal_status_t {
+    // placeholder, this is not necessary and is commented out in the arduino lib
     PAL_STATUS_SUCCESS.into()
 }
 
