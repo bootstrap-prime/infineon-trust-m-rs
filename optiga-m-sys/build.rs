@@ -34,6 +34,7 @@ fn main() -> anyhow::Result<()> {
         .include("pal")
         .include("optiga-trust-m/optiga/include/")
         .include("optiga-trust-m/optiga/include/optiga/pal")
+        .include("pal/optiga/include/optiga/pal")
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
         .file("pal/pal_os_datastore.c")
@@ -48,7 +49,8 @@ fn main() -> anyhow::Result<()> {
                 .filter(|e| {
                     // Option<String> -> Option<bool> -> bool
                     e.extension().map(|e| e == "c").unwrap_or_default()
-                }),
+                })
+                .filter(|e| e.file_name().unwrap() != "pal_os_memory.h"),
         )
         .compile("optiga-m-sys");
 
