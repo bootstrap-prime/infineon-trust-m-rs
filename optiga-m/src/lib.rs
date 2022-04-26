@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 use core::ffi::c_void;
 use core::fmt::Debug;
@@ -117,6 +117,9 @@ impl From<u16> for OptigaStatus {
 }
 
 unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
+    #[cfg(not(test))]
+    defmt::info!("handling error");
+
     match returned_status.into() {
         OptigaStatus::Success(_) => Ok(()),
         OptigaStatus::Busy(_) => loop {
@@ -148,6 +151,9 @@ impl OptigaM {
             OptigaTrustM::setup_new(rst, pwr, i2c);
         }
 
+        #[cfg(not(test))]
+        defmt::trace!("periph setup");
+
         let lib_util = unsafe {
             let lib_util = NonNull::new(optiga_util_create(
                 OPTIGA_INSTANCE_ID_0,
@@ -155,6 +161,9 @@ impl OptigaM {
                 core::ptr::null_mut(),
             ))
             .expect("optiga_util_create() returned a null pointer");
+
+            #[cfg(not(test))]
+            defmt::trace!("lib util created");
 
             handle_error(optiga_util_open_application(lib_util.as_ptr(), false as u8))
                 .expect("was unable to initialize utility");
@@ -202,6 +211,7 @@ impl OptigaM {
                 addr_of_mut!(hash_context),
             ))?;
 
+            #[cfg(not(test))]
             defmt::trace!("started hash");
 
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
@@ -212,6 +222,7 @@ impl OptigaM {
                 &hash_data_context as *const _ as *const c_void,
             ))?;
 
+            #[cfg(not(test))]
             defmt::trace!("updated hash with data");
 
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
@@ -221,6 +232,7 @@ impl OptigaM {
                 hash_buffer.as_mut_ptr(),
             ))?;
 
+            #[cfg(not(test))]
             defmt::trace!("finalized hash, returning");
         }
 
