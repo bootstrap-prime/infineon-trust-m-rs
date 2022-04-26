@@ -88,12 +88,9 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
 
     let timer: &mut _ = pal_os_event_cback_timer.get_or_insert(Timer::default());
 
-    timer.add(
-        core::time::Duration::from_micros(time_us as u64 + systick::micros()),
-        |_| {
-            context.callfunc(os_event.callback_registered);
-        },
-    );
+    timer.add(core::time::Duration::from_micros(time_us as u64), |_| {
+        context.callfunc(os_event.callback_registered);
+    });
 }
 
 #[no_mangle]
