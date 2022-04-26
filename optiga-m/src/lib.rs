@@ -239,3 +239,21 @@ impl OptigaM {
         Ok(hash_buffer)
     }
 }
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn dont_segfault() {
+        use crate::OptigaM;
+        use embedded_hal_mock::{i2c::Mock as I2CMock, pin::Mock as PinMock};
+
+        println!("hi");
+
+        let mut rstpin = PinMock::new(&[]);
+        let mut vccpin = rstpin.clone();
+        let mut i2cpin = I2CMock::new(&[]);
+
+        let mut device = OptigaM::new(rstpin, vccpin, i2cpin);
+
+        let optiga_result = device.sha256(&[0, 1, 2, 3]).unwrap();
+    }
+}
