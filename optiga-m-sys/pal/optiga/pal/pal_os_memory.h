@@ -43,6 +43,8 @@
 extern "C" {
 #endif
 
+#include "printf.h"
+
 /**
  * \brief Allocates a block of memory.
  *

@@ -35,9 +35,16 @@ fn main() -> anyhow::Result<()> {
         .include("optiga-trust-m/optiga/include/")
         .include("optiga-trust-m/optiga/include/optiga/pal")
         .include("pal/optiga/include/optiga/pal")
+        .include(env!("SPRINTF_PATH"))
+        .file(
+            PathBuf::from(env!("SPRINTF_PATH"))
+                .as_path()
+                .join("printf.c"),
+        )
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
         .file("pal/pal_os_datastore.c")
+        .file("pal/pal_string.c")
         .define("OPTIGA_LIB_EXTERNAL", "\"optiga_lib_config_external.h\"")
         .files(
             walkdir::WalkDir::new("optiga-trust-m/optiga/")
@@ -50,7 +57,10 @@ fn main() -> anyhow::Result<()> {
                     // Option<String> -> Option<bool> -> bool
                     e.extension().map(|e| e == "c").unwrap_or_default()
                 })
-                .filter(|e| e.file_name().unwrap() != "pal_os_memory.h"),
+                .filter(|e| {
+                    e.file_name().unwrap() != "pal_os_memory.h"
+                        && e.file_name().unwrap() != "pal_crypt_mbedtls.c"
+                }),
         )
         .compile("optiga-m-sys");
 
