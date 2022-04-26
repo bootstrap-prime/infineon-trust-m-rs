@@ -1,4 +1,3 @@
-#![no_std]
 #![cfg_attr(not(any(test, feature = "tester")), no_std)]
 #![feature(option_get_or_insert_default)]
 // Safety: users must not define more than one module at a time.
