@@ -20,3 +20,7 @@ defmt = "0.3.0"
 cty = "0.2.2"
 naive-timer = "0.2.0"
 hashbrown = "0.12.0"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+
+[features]
+tester = []

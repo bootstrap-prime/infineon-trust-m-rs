@@ -24,6 +24,13 @@ pub unsafe extern "C" fn pal_os_event_create(
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
+    #[cfg(not(any(test, feature = "tester")))]
+    defmt::trace!(
+        "callback: {}, callback_args: {}",
+        !callback.is_some(),
+        !callback_args.is_null()
+    );
+
     if !callback.is_some() && !callback_args.is_null() {
         pal_os_event_start(
             &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t,
@@ -114,5 +121,15 @@ pub unsafe extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_o
 pub unsafe extern "C" fn pal_os_event_process() {
     let timer: &mut _ = pal_os_event_cback_timer.get_or_insert(Timer::default());
 
-    timer.expire(core::time::Duration::from_micros(systick::micros()));
+    timer.expire({
+        #[cfg(not(feature = "tester"))]
+        {
+            core::time::Duration::from_micros(systick::micros())
+        }
+
+        #[cfg(feature = "tester")]
+        {
+            crate::since_started.elapsed()
+        }
+    });
 }

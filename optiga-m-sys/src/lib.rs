@@ -1,5 +1,12 @@
 #![no_std]
+#![cfg_attr(not(any(test, feature = "tester")), no_std)]
+#![feature(option_get_or_insert_default)]
 // Safety: users must not define more than one module at a time.
+
+#[cfg(feature = "tester")]
+lazy_static::lazy_static! {
+    pub static ref since_started: std::time::Instant = std::time::Instant::now();
+}
 
 // ignore all the errors in the generated rust bindings, otherwise this gets really annoying
 pub mod cbindings {
