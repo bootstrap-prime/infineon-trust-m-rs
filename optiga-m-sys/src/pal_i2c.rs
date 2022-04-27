@@ -1,3 +1,5 @@
+use core::ptr::NonNull;
+
 use crate::{
     cbindings::{self, pal_i2c, pal_i2c_t, pal_status_t, PAL_STATUS_SUCCESS},
     OPTIGA_TRUST_M_RESOURCES,
@@ -33,25 +35,20 @@ pub unsafe extern "C" fn pal_i2c_read(
 ) -> pal_status_t {
     #[cfg(not(any(test, feature = "tester")))]
     trace!("read i2c");
+    let p_data = NonNull::new(p_data).unwrap().as_ptr();
     let mut data = core::slice::from_raw_parts_mut(p_data, length.into());
 
-    match (p_i2c_context.as_ref(), &mut OPTIGA_TRUST_M_RESOURCES) {
-        (Some(ctx), Some(periph)) => {
-            if periph.as_mut().read_i2c(ctx.slave_address, &mut data) {
-                cbindings::PAL_I2C_EVENT_ERROR.into()
-            } else {
-                cbindings::PAL_I2C_EVENT_SUCCESS.into()
-            }
-        }
-        (ctx, periph) => {
-            #[cfg(not(any(test, feature = "tester")))]
-            trace!(
-                "ctx.is_some(): {}, periph.is_some(): {}",
-                ctx.is_some(),
-                periph.is_some()
-            );
-            cbindings::PAL_I2C_EVENT_ERROR.into()
-        }
+    let ctx: &pal_i2c = NonNull::new(p_i2c_context as *mut _)
+        .expect("i2c context in read was a null pointer")
+        .as_ref();
+    let periph = OPTIGA_TRUST_M_RESOURCES
+        .as_mut()
+        .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
+
+    if periph.as_mut().read_i2c(ctx.slave_address, &mut data) {
+        cbindings::PAL_I2C_EVENT_ERROR.into()
+    } else {
+        cbindings::PAL_I2C_EVENT_SUCCESS.into()
     }
 }
 
@@ -63,24 +60,20 @@ pub unsafe extern "C" fn pal_i2c_write(
 ) -> pal_status_t {
     #[cfg(not(any(test, feature = "tester")))]
     trace!("wrote i2c");
+
+    let ctx: &pal_i2c = NonNull::new(p_i2c_context as *mut _)
+        .expect("i2c context in write was a null pointer")
+        .as_ref();
+    let periph = OPTIGA_TRUST_M_RESOURCES
+        .as_mut()
+        .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
+
+    let p_data = NonNull::new(p_data).unwrap().as_ptr();
     let data = core::slice::from_raw_parts(p_data, length.into());
 
-    match (p_i2c_context.as_ref(), &mut OPTIGA_TRUST_M_RESOURCES) {
-        (Some(ctx), Some(periph)) => {
-            if periph.as_mut().write_i2c(ctx.slave_address, data) {
-                cbindings::PAL_I2C_EVENT_ERROR.into()
-            } else {
-                cbindings::PAL_I2C_EVENT_SUCCESS.into()
-            }
-        }
-        (ctx, periph) => {
-            #[cfg(not(any(test, feature = "tester")))]
-            trace!(
-                "ctx.is_some(): {}, periph.is_some(): {}",
-                ctx.is_some(),
-                periph.is_some()
-            );
-            cbindings::PAL_I2C_EVENT_ERROR.into()
-        }
+    if periph.as_mut().write_i2c(ctx.slave_address, data) {
+        cbindings::PAL_I2C_EVENT_ERROR.into()
+    } else {
+        cbindings::PAL_I2C_EVENT_SUCCESS.into()
     }
 }
