@@ -60,8 +60,7 @@ extern "C" {
  *
  * \param[in] block_size   Size of memory block to be allocated
  */
-
-LIBRARY_EXPORTS void * pal_os_malloc(uint32_t block_size);
+void* pal_os_malloc(size_t block_size);
 
 /**
  * \brief Allocates a block of memory and clean the contents.
@@ -78,7 +77,7 @@ LIBRARY_EXPORTS void * pal_os_malloc(uint32_t block_size);
  * \param[in] no_of_blocks   Number of blocks to be allocated
  * \param[in] block_size     Size of memory block to be allocated
  */
-LIBRARY_EXPORTS void * pal_os_calloc(uint32_t number_of_blocks , uint32_t block_size);
+void* pal_os_calloc(size_t no_of_blocks, size_t block_size);
 
 /**
  * \brief Free's a block of allocated memory.
@@ -94,7 +93,7 @@ LIBRARY_EXPORTS void * pal_os_calloc(uint32_t number_of_blocks , uint32_t block_
  *
  * \param[in] p_block   Pointer to the memory block to be freed
  */
-LIBRARY_EXPORTS void pal_os_free(void * block);
+void pal_os_free(void* p_block);
 
 /**
  * \brief Copies the data from source to destination.
