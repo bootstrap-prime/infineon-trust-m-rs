@@ -135,10 +135,12 @@ impl From<u16> for OptigaStatus {
 unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
     match returned_status.into() {
         OptigaStatus::Success(_) => {
+            #[cfg(not(any(test, feature = "tester")))]
             defmt::trace!("processing");
             while let OptigaStatus::Busy(_) = optiga_lib_status.into() {
                 pal_os_event_process();
             }
+            #[cfg(not(any(test, feature = "tester")))]
             defmt::trace!("processed");
 
             match optiga_lib_status.into() {
