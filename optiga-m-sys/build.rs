@@ -35,12 +35,8 @@ fn main() -> anyhow::Result<()> {
         .include("optiga-trust-m/optiga/include/")
         .include("optiga-trust-m/optiga/include/optiga/pal")
         .include("pal/optiga/include/optiga/pal")
-        .include(env!("SPRINTF_PATH"))
-        .file(
-            PathBuf::from(env!("SPRINTF_PATH"))
-                .as_path()
-                .join("printf.c"),
-        )
+        .include("printf")
+        .file("printf/printf.c")
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
         .file("pal/pal_os_datastore.c")
