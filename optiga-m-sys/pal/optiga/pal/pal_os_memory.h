@@ -59,7 +59,7 @@ extern "C" {
  *
  * \param[in] block_size   Size of memory block to be allocated
  */
-#define pal_os_malloc(block_size) malloc(block_size)
+void* pal_os_malloc(size_t block_size);
 
 /**
  * \brief Allocates a block of memory and clean the contents.
@@ -76,7 +76,7 @@ extern "C" {
  * \param[in] no_of_blocks   Number of blocks to be allocated
  * \param[in] block_size     Size of memory block to be allocated
  */
-#define pal_os_calloc(no_of_blocks, block_size) calloc(no_of_blocks, block_size)
+void* pal_os_calloc(size_t no_of_blocks, size_t block_size);
 
 /**
  * \brief Free's a block of allocated memory.
@@ -92,7 +92,7 @@ extern "C" {
  *
  * \param[in] p_block   Pointer to the memory block to be freed
  */
-#define pal_os_free(p_block) free(p_block)
+void pal_os_free(void* p_block);
 
 /**
  * \brief Copies the data from source to destination.
