@@ -43,6 +43,7 @@
 extern "C" {
 #endif
 
+#include "pal.h"
 #include "printf.h"
 
 /**

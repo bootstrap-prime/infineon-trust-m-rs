@@ -109,9 +109,25 @@ pub enum OptigaStatus {
 
 impl From<u16> for OptigaStatus {
     fn from(numeric_error: u16) -> OptigaStatus {
-        match numeric_error.try_into() {
-            Ok(e) => e,
-            Err(_e) => OptigaStatus::Unknown(numeric_error),
+        use core::convert::TryFrom;
+
+        use OptigaStatus::*;
+        if let Ok(e) = numeric_error.try_into() {
+            Busy(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            Success(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            CmdError(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            CommsError(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            CryptError(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            UtilError(e)
+        } else if let Ok(e) = numeric_error.try_into() {
+            DeviceError(e)
+        } else {
+            Unknown(numeric_error)
         }
     }
 }

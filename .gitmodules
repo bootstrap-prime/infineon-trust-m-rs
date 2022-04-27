@@ -1,3 +1,6 @@
 [submodule "optiga-m-sys/optiga-trust-m"]
 	path = optiga-m-sys/optiga-trust-m
 	url = https://github.com/Infineon/optiga-trust-m
+[submodule "optiga-m-sys/printf"]
+	path = optiga-m-sys/printf
+	url = https://github.com/mpaland/printf
