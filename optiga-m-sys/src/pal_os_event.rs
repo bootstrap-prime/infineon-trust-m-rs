@@ -1,4 +1,6 @@
 use crate::cbindings;
+use core::ptr::NonNull;
+use cty::c_void;
 use naive_timer::Timer;
 
 // Can't be a none value because sometimes a null callback is passed through, but a reference
@@ -68,6 +70,13 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     impl CallbackCtx {
         unsafe fn callfunc(self, callback: cbindings::register_callback) {
             if let Some(callback) = callback {
+                #[cfg(not(any(test, feature = "tester")))]
+                defmt::trace!("calling callback");
+
+                let context: *mut c_void = NonNull::new(self.0)
+                    .expect("callback context was null")
+                    .as_ptr();
+
                 let CallbackCtx(context) = self;
                 callback(context);
             }
