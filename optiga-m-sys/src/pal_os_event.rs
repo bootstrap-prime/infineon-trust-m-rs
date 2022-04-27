@@ -3,20 +3,22 @@ use naive_timer::Timer;
 
 // Can't be a none value because sometimes a null callback is passed through, but a reference
 // to a valid event is always required.
-static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = Some(cbindings::pal_os_event {
+const DEFAULT_EVENT: cbindings::pal_os_event = cbindings::pal_os_event {
     is_event_triggered: false as u8,
     callback_registered: None,
     callback_ctx: core::ptr::null_mut(),
     os_timer: core::ptr::null_mut(),
     sync_flag: 0,
     timeout_us: 0,
-});
+};
+
+static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = Some(DEFAULT_EVENT);
 static mut pal_os_event_cback_timer: Option<Timer> = None;
 
 // handle the callback stack
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_destroy(event: *mut cbindings::pal_os_event_t) {
-    // pal_os_event_0 = None;
+    pal_os_event_0 = None;
 }
 
 #[no_mangle]
@@ -27,28 +29,23 @@ pub unsafe extern "C" fn pal_os_event_create(
     #[cfg(not(any(test, feature = "tester")))]
     defmt::trace!(
         "callback: {}, callback_args: {}",
-        !callback.is_some(),
+        !callback.is_none(),
         !callback_args.is_null()
     );
 
-    if !callback.is_some() && !callback_args.is_null() {
-        pal_os_event_start(
-            &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t,
-            callback,
-            callback_args,
-        );
+    let event = &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
+
+    if !callback.is_none() && !callback_args.is_null() {
+        pal_os_event_start(event, callback, callback_args);
     }
 
-    return &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
+    return event;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_trigger_registered_callback() {
-    if let Some(event) = pal_os_event_0 {
-        if event.is_event_triggered != 0 {
-            let mut event = pal_os_event_0.take().unwrap();
-            event.is_event_triggered = true as u8;
-            let callback = event.callback_registered.take().unwrap();
+    if let Some(ref mut event) = pal_os_event_0 {
+        if let Some(callback) = event.callback_registered {
             callback(event.callback_ctx);
         }
     }
@@ -63,14 +60,8 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
 ) {
     let os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
 
-    *os_event = cbindings::pal_os_event {
-        is_event_triggered: false as u8,
-        callback_registered: callback,
-        callback_ctx: callback_args,
-        os_timer: core::ptr::null_mut(),
-        sync_flag: 0,
-        timeout_us: 0,
-    };
+    os_event.callback_registered = callback;
+    os_event.callback_ctx = callback_args;
 
     struct CallbackCtx(*mut cty::c_void);
     unsafe impl Send for CallbackCtx {}

@@ -1,5 +1,6 @@
 #![cfg_attr(not(any(test, feature = "tester")), no_std)]
 #![feature(option_get_or_insert_default)]
+#![feature(let_chains)]
 // Safety: users must not define more than one module at a time.
 
 #[cfg(feature = "tester")]
