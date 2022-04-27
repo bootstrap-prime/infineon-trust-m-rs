@@ -133,19 +133,19 @@ impl From<u16> for OptigaStatus {
 }
 
 unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
-    #[cfg(not(test))]
-    defmt::info!("handling error");
-
     match returned_status.into() {
-        OptigaStatus::Success(_) => Ok(()),
-        OptigaStatus::Busy(_) => loop {
-            // poll the "async" stack until we get something that isn't busy
-            match optiga_lib_status.into() {
-                OptigaStatus::Busy(_) => pal_os_event_process(),
-                OptigaStatus::Success(_) => break Ok(()),
-                e => break Err(e),
+        OptigaStatus::Success(_) => {
+            defmt::trace!("processing");
+            while let OptigaStatus::Busy(_) = optiga_lib_status.into() {
+                pal_os_event_process();
             }
-        },
+            defmt::trace!("processed");
+
+            match optiga_lib_status.into() {
+                OptigaStatus::Success(_) => Ok(()),
+                e => Err(e),
+            }
+        }
         e => Err(e),
     }
 }
@@ -221,6 +221,9 @@ impl OptigaM {
         use core::ptr::addr_of_mut;
 
         unsafe {
+            #[cfg(not(test))]
+            defmt::trace!("starting hash");
+
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_start(
                 self.lib_crypt.as_ptr(),

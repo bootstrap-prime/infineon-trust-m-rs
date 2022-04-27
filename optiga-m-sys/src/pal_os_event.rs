@@ -27,11 +27,7 @@ pub unsafe extern "C" fn pal_os_event_create(
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
     #[cfg(not(any(test, feature = "tester")))]
-    defmt::trace!(
-        "callback: {}, callback_args: {}",
-        !callback.is_none(),
-        !callback_args.is_null()
-    );
+    defmt::trace!("creating event");
 
     let event = &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
 
@@ -44,6 +40,9 @@ pub unsafe extern "C" fn pal_os_event_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_trigger_registered_callback() {
+    #[cfg(not(any(test, feature = "tester")))]
+    defmt::trace!("triggering event");
+
     if let Some(ref mut event) = pal_os_event_0 {
         if let Some(callback) = event.callback_registered {
             callback(event.callback_ctx);
