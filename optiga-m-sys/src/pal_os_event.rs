@@ -59,6 +59,8 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     callback_args: *mut cty::c_void,
     time_us: u32,
 ) {
+    assert!(!p_pal_os_event.is_null());
+
     let os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
 
     os_event.callback_registered = callback;
@@ -71,13 +73,13 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
         unsafe fn callfunc(self, callback: cbindings::register_callback) {
             if let Some(callback) = callback {
                 #[cfg(not(any(test, feature = "tester")))]
-                defmt::trace!("calling callback");
+                defmt::trace!("calling callback {:?}", callback as *mut c_void);
 
-                let context: *mut c_void = NonNull::new(self.0)
+                let CallbackCtx(context) = self;
+                let context: *mut c_void = NonNull::new(context)
                     .expect("callback context was null")
                     .as_ptr();
 
-                let CallbackCtx(context) = self;
                 callback(context);
             }
         }
@@ -87,8 +89,25 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
 
     let timer: &mut _ = pal_os_event_cback_timer.get_or_insert(Timer::default());
 
-    timer.add(core::time::Duration::from_micros(time_us as u64), |_| {
-        context.callfunc(os_event.callback_registered);
+    #[cfg(not(any(feature = "tester", test)))]
+    let current_time = core::time::Duration::from_micros(systick::micros());
+    #[cfg(any(feature = "tester", test))]
+    let current_time = crate::since_started.elapsed();
+
+    let deadline = current_time + core::time::Duration::from_micros(time_us as u64);
+
+    #[cfg(not(any(test, feature = "tester")))]
+    defmt::trace!(
+        "registering for time: {:?}. it is now {:?} us",
+        deadline,
+        current_time
+    );
+
+    assert!(deadline > current_time);
+
+    timer.add(deadline, move |_| {
+        assert!(callback.is_some());
+        context.callfunc(callback);
     });
 }
 
