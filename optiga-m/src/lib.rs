@@ -162,6 +162,8 @@ impl OptigaM {
         RSTPin: OutputPin,
         VCCPin: OutputPin,
         I2CPin: Write + Read,
+        <I2CPin as Write>::Error: Debug,
+        <I2CPin as Read>::Error: Debug,
     {
         use optiga_m_sys::OptigaTrustM;
 

@@ -29,6 +29,8 @@ where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    <I2CPin as Write>::Error: Debug,
+    <I2CPin as Read>::Error: Debug,
 {
     i2c: I2CPin,
     rst: RSTPin,
@@ -57,6 +59,8 @@ where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    <I2CPin as Write>::Error: Debug,
+    <I2CPin as Read>::Error: Debug,
 {
     fn set_rst_high(&mut self) -> bool {
         self.rst.set_high().is_ok()
@@ -90,6 +94,8 @@ where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    <I2CPin as Write>::Error: Debug,
+    <I2CPin as Read>::Error: Debug,
 {
 }
 
@@ -106,6 +112,8 @@ where
     RSTPin: OutputPin,
     VCCPin: OutputPin,
     I2CPin: Write + Read,
+    <I2CPin as Write>::Error: Debug,
+    <I2CPin as Read>::Error: Debug,
 {
     pub unsafe fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
         // user will need to configure the systick timer
