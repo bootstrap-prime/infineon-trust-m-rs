@@ -45,11 +45,36 @@ pub unsafe extern "C" fn pal_i2c_read(
         .as_mut()
         .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
-    if periph.as_mut().read_i2c(ctx.slave_address, &mut data) {
-        cbindings::PAL_I2C_EVENT_ERROR.into()
+    let (fn_result, handler_result) = if periph.as_mut().read_i2c(ctx.slave_address, &mut data) {
+        (
+            cbindings::PAL_STATUS_SUCCESS.into(),
+            cbindings::PAL_I2C_EVENT_SUCCESS.into(),
+        )
     } else {
-        cbindings::PAL_I2C_EVENT_SUCCESS.into()
+        (
+            cbindings::PAL_STATUS_FAILURE.into(),
+            cbindings::PAL_I2C_EVENT_ERROR.into(),
+        )
+    };
+
+    // #[cfg(not(any(test, feature = "tester")))]
+    // trace!("read i2c bytes {=[u8]}", data);
+
+    if let Some(handler) = NonNull::new(ctx.upper_layer_event_handler).map(NonNull::as_ptr) {
+        if let Some(context) = NonNull::new(ctx.p_upper_layer_ctx).map(NonNull::as_ptr) {
+            let handler: cbindings::upper_layer_callback_t = Some(core::mem::transmute(handler));
+            let handler = handler.unwrap();
+            handler(context, handler_result);
+        } else {
+            #[cfg(not(any(test, feature = "tester")))]
+            trace!("context was null");
+        }
+    } else {
+        #[cfg(not(any(test, feature = "tester")))]
+        trace!("handler was null");
     }
+
+    fn_result
 }
 
 #[no_mangle]
@@ -71,9 +96,34 @@ pub unsafe extern "C" fn pal_i2c_write(
     let p_data = NonNull::new(p_data).unwrap().as_ptr();
     let data = core::slice::from_raw_parts(p_data, length.into());
 
-    if periph.as_mut().write_i2c(ctx.slave_address, data) {
-        cbindings::PAL_I2C_EVENT_ERROR.into()
+    // #[cfg(not(any(test, feature = "tester")))]
+    // trace!("writing i2c byte {=[u8]}", data);
+
+    let (fn_result, handler_result) = if periph.as_mut().write_i2c(ctx.slave_address, data) {
+        (
+            cbindings::PAL_STATUS_SUCCESS.into(),
+            cbindings::PAL_I2C_EVENT_SUCCESS.into(),
+        )
     } else {
-        cbindings::PAL_I2C_EVENT_SUCCESS.into()
+        (
+            cbindings::PAL_STATUS_FAILURE.into(),
+            cbindings::PAL_I2C_EVENT_ERROR.into(),
+        )
+    };
+
+    if let Some(handler) = NonNull::new(ctx.upper_layer_event_handler).map(NonNull::as_ptr) {
+        if let Some(context) = NonNull::new(ctx.p_upper_layer_ctx).map(NonNull::as_ptr) {
+            let handler: cbindings::upper_layer_callback_t = Some(core::mem::transmute(handler));
+            let handler = handler.unwrap();
+            handler(context, handler_result);
+        } else {
+            #[cfg(not(any(test, feature = "tester")))]
+            trace!("context was null");
+        }
+    } else {
+        #[cfg(not(any(test, feature = "tester")))]
+        trace!("handler was null");
     }
+
+    fn_result
 }
