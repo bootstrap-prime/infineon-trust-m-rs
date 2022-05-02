@@ -28,9 +28,6 @@ pub unsafe extern "C" fn pal_os_event_create(
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
-    #[cfg(not(any(test, feature = "tester")))]
-    defmt::trace!("creating event");
-
     let event = &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t;
 
     if !callback.is_none() && !callback_args.is_null() {
@@ -42,9 +39,6 @@ pub unsafe extern "C" fn pal_os_event_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_trigger_registered_callback() {
-    #[cfg(not(any(test, feature = "tester")))]
-    defmt::trace!("triggering event");
-
     if let Some(ref mut event) = pal_os_event_0 {
         if let Some(callback) = event.callback_registered {
             callback(event.callback_ctx);
@@ -72,9 +66,6 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     impl CallbackCtx {
         unsafe fn callfunc(self, callback: cbindings::register_callback) {
             if let Some(callback) = callback {
-                #[cfg(not(any(test, feature = "tester")))]
-                defmt::trace!("calling callback {:?}", callback as *mut c_void);
-
                 let CallbackCtx(context) = self;
                 let context: *mut c_void = NonNull::new(context)
                     .expect("callback context was null")
@@ -96,12 +87,6 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
 
     let deadline = current_time + core::time::Duration::from_micros(time_us as u64);
 
-    #[cfg(not(any(test, feature = "tester")))]
-    defmt::trace!(
-        "registering for time: {:?}. it is now {:?} us",
-        deadline,
-        current_time
-    );
 
     assert!(deadline > current_time);
 
