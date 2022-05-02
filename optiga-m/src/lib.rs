@@ -185,9 +185,6 @@ impl OptigaM {
             #[cfg(not(test))]
             defmt::trace!("lib util created");
 
-            handle_error(optiga_util_open_application(lib_util.as_ptr(), false as u8))
-                .expect("was unable to initialize utility");
-
             lib_util
         };
 
@@ -199,6 +196,12 @@ impl OptigaM {
             ))
             .expect("optiga_crypt_create() returned a null pointer")
         };
+
+        unsafe {
+            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+            handle_error(optiga_util_open_application(lib_util.as_ptr(), false as u8))
+                .expect("was unable to initialize utility");
+        }
 
         OptigaM {
             lib_util,
