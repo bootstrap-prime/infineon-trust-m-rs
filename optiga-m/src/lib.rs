@@ -316,13 +316,28 @@ mod tests {
     #[test]
     fn dont_segfault() {
         use crate::OptigaM;
+        use embedded_hal_mock::i2c::Transaction as I2CTransaction;
         use embedded_hal_mock::{i2c::Mock as I2CMock, pin::Mock as PinMock};
 
         println!("hi");
 
         let mut rstpin = PinMock::new(&[]);
         let mut vccpin = rstpin.clone();
-        let mut i2cpin = I2CMock::new(&[]);
+        let mut i2cpin = I2CMock::new(&[
+            I2CTransaction::write(48, vec![132]),
+            I2CTransaction::read(48, vec![0, 0, 1, 144]),
+            I2CTransaction::write(48, vec![129, 1, 21]),
+            I2CTransaction::write(48, vec![129]),
+            I2CTransaction::read(48, vec![1, 21]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 3, 0, 21, 0, 240, 0, 0, 16, 210, 118, 0, 0, 4, 71, 101, 110, 65, 117, 116,
+                    104, 65, 112, 112, 108, 201, 182,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+        ]);
 
         let mut device = OptigaM::new(rstpin, vccpin, i2cpin);
 
