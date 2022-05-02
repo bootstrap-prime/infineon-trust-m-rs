@@ -206,6 +206,52 @@ impl OptigaM {
         }
     }
 
+    pub fn test_optiga_communication(&mut self) -> Result<(), OptigaStatus> {
+        let mut transmit_buffer: [u8; 1] = [0x82];
+        let mut recv_buffer: [u8; 4] = [0; 4];
+
+        let optiga_pal_i2c_context_0: cbindings::pal_i2c_t = cbindings::pal_i2c {
+            p_i2c_hw_config: core::ptr::null_mut(),
+            p_upper_layer_ctx: core::ptr::null_mut(),
+            upper_layer_event_handler: optiga_util_callback as *mut c_void,
+            slave_address: 0x30,
+        };
+
+        let mut pal_return_status: u16 = cbindings::PAL_I2C_EVENT_SUCCESS.into();
+
+        unsafe {
+            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != optiga_lib_status {
+                optiga_lib_status = cbindings::PAL_I2C_EVENT_BUSY.into();
+                pal_return_status = cbindings::pal_i2c_write(
+                    &optiga_pal_i2c_context_0,
+                    transmit_buffer.as_mut_ptr(),
+                    transmit_buffer.len() as u16,
+                );
+
+                if cbindings::PAL_STATUS_FAILURE as u16 == optiga_lib_status {
+                    break;
+                }
+            }
+        }
+
+        unsafe {
+            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != optiga_lib_status {
+                optiga_lib_status = cbindings::PAL_I2C_EVENT_BUSY.into();
+                pal_return_status = cbindings::pal_i2c_read(
+                    &optiga_pal_i2c_context_0,
+                    recv_buffer.as_mut_ptr(),
+                    recv_buffer.len() as u16,
+                );
+
+                if cbindings::PAL_STATUS_FAILURE as u16 == optiga_lib_status {
+                    break;
+                }
+            }
+        }
+
+        unsafe { handle_error(pal_return_status) }
+    }
+
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
         let mut hash_buffer: [u8; 32] = [0; 32];
         // initialize hash context
