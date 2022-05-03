@@ -70,8 +70,72 @@ pub enum UtilError {
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
 #[repr(u16)]
+/// Possible errors returned by the device, defined in https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes
 pub enum DeviceError {
-    Error = cbindings::OPTIGA_DEVICE_ERROR,
+    ///Invalid OID
+    InvalidOID = 0x8001,
+    ///Invalid Password
+    InvalidPassword = 0x8002,
+    ///Invalid Param field in command
+    InvalidParamField = 0x8003,
+    ///Invalid Length field in command
+    InvalidLenField = 0x8004,
+    ///Invalid parameter in command data field
+    InvalidParameterInDataField = 0x8005,
+    ///Internal process error
+    InternalProcessError = 0x8006,
+    ///Access conditions are not satisfied
+    AccessConditionsNotSatisfied = 0x8007,
+    ///The sum of offset and data provided (offset + data length) exceeds the max length of the data object
+    DataObjectBoundaryExceeded = 0x8008,
+    ///Metadata truncation error
+    MetadataTruncationError = 0x8009,
+    ///Invalid command field
+    InvalidCmdField = 0x800A,
+    ///Command or message out of sequence.
+    /// Command out of sequence means that the command which expected to use certain resources are not available or not started at chip
+    /// e.g. invoking the optiga_crypt_tls_prf_sha256() function (which is using session) before invoking the optiga_crypt_ecdh() function.
+    /// Another example is a usage of the optiga_crypt_ecdh() and optiga_crypt_tls_prf_sha256() functions in the row using the Session OID
+    /// without optiga_crypt_ecc_generate_keypair(), this leads to failure "of out of sequence" due to a lack of private key in Session OID slot
+    CmdOutOfSequence = 0x800B,
+    ///due to termination state of the application or due to Application closed
+    CmdNotAvailable = 0x800C,
+    ///Insufficient memory to process the command APDU
+    InsufficientMemoryBuffer = 0x800D,
+    ///Counter value crossed the threshold limit and further counting is denied.
+    CounterThresholdLimitExceeded = 0x800E,
+    ///The Manifest version provided is not supported or the Payload Version in Manifest has MSB set (Invalid Flag=1).
+    /// Invalid or un-supported manifest values or formats including CBOR parsing errors.
+    InvalidManifest = 0x800F,
+    ///The Payload Version provided in the Manifest is not greater than the version of the target object
+    /// or the last update was interrupted and the restarted/retried update has not the same version
+    InvalidOrWrongPayloadVersion = 0x8010,
+    ///Illegal parameters in (D)TLS Handshake message, either in header or data.
+    InvalidHandshakeMessage = 0x8021,
+    ///Protocol or data structure version mismatch (e.g. X.509 Version, ...).
+    VersionMismatch = 0x8022,
+    ///Cipher suite mismatch between client and server.
+    InsufficientOrUnsupportedCipherSuite = 0x8023,
+    ///An unsupported extension found in the message. Unsupported keyusage/Algorithm extension/identifier for the usage of Private key
+    UnsupportedExtensionOrIdentifier = 0x8024,
+    ///The Trust Anchor is either not loaded or the loaded Trust Anchor is invalid e.g. not well formed X.509 certificate, public key missing, ...).
+    InvalidTrustAnchor = 0x8026,
+    ///The Trust Anchor loaded at OPTIGA Trust is expired.
+    TrustAnchorExpired = 0x8027,
+    ///The cryptographic algorithms specified in Trust Anchor loaded are not supported by OPTIGA Trust.
+    UnsupportedTrustAnchor = 0x8028,
+    ///Invalid certificate(s) in certificate message with the following reasons.
+    InvalidCertificateFormat = 0x8029,
+    ///At least one cryptographic algorithm specified in the certificate is not supported (e.g. hash or sign algorithms).
+    UnsupportedCertificateAlgorithm = 0x802A,
+    ///The certificate or at least one certificate in a certificate chain received is expired.
+    CertificateExpired = 0x802B,
+    ///Signature verification failure.
+    SignatureVerificationFailure = 0x802C,
+    ///Message Integrity validation failure (e.g. during CCM decryption).
+    IntegrityValidationFailure = 0x802D,
+    ///Decryption Failure.
+    DecryptionFailure = 0x802E,
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
@@ -88,6 +152,8 @@ pub enum Busy {
 #[repr(u16)]
 pub enum Successes {
     Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
+    // despite the name, apparenly this macro by itself is a success
+    Device = cbindings::OPTIGA_DEVICE_ERROR as u16,
     // Comms = cbindings::OPTIGA_COMMS_SUCCESS,
     // Crypt = cbindings::OPTIGA_CRYPT_SUCCESS,
     // Lib = cbindings::OPTIGA_LIB_SUCCESS,
