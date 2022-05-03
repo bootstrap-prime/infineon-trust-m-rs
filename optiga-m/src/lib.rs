@@ -322,12 +322,14 @@ impl OptigaM {
     }
 
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
+        let mut hash_context_buffer: [u8; 130] = [0; 130];
         let mut hash_buffer: [u8; 32] = [0; 32];
+
         // initialize hash context
         let mut hash_context: optiga_hash_context_t = {
             optiga_hash_context {
-                context_buffer: hash_buffer.as_mut_ptr(),
-                context_buffer_length: hash_buffer.len() as u16,
+                context_buffer: hash_context_buffer.as_mut_ptr(),
+                context_buffer_length: hash_context_buffer.len() as u16,
                 hash_algo: optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u8,
             }
         };
