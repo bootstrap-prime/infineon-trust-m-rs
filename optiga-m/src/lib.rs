@@ -463,46 +463,36 @@ impl OptigaM {
 
         use core::ptr::{addr_of, addr_of_mut};
 
+        // let default_current_limit = self.get_current_limit()?;
+
+        // defmt::trace!("current current limit: {}", default_current_limit);
+
+        // assert!(default_current_limit == 6);
+
+        // // Set current limit
+        // self.set_current_limit(15)?;
+
         #[cfg(not(test))]
         defmt::trace!("starting hash");
 
-        unsafe {
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(optiga_crypt_hash_start(
-                self.lib_crypt.as_ptr(),
-                addr_of_mut!(hash_context),
-            ))?;
-        }
-
-        #[cfg(not(test))]
-        defmt::trace!("started hash");
+        let mut hash_buffer: [u8; 32] = [0; 32];
 
         unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(optiga_crypt_hash_update(
+            handle_error(cbindings::optiga_crypt_hash(
                 self.lib_crypt.as_ptr(),
-                addr_of_mut!(hash_context),
+                optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u32,
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 addr_of!(hash_data_host) as *const c_void,
-            ))?;
-        }
-
-        #[cfg(not(test))]
-        defmt::trace!("updated hash with data");
-
-        let mut hash_buffer: [u8; 32] = [0; 32];
-        unsafe {
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(optiga_crypt_hash_finalize(
-                self.lib_crypt.as_ptr(),
-                addr_of_mut!(hash_context),
                 hash_buffer.as_mut_ptr(),
             ))?;
         }
+        // defmt::trace!("got through here");
 
         Ok(hash_buffer)
     }
 }
+
 #[cfg(test)]
 mod tests {
     #[test]
