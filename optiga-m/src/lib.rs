@@ -517,7 +517,87 @@ mod tests {
                 ],
             ),
             I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 5]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![129, 0, 0, 86, 48]),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![8, 128, 0, 0]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 3, 0, 21, 0, 240, 0, 0, 16, 210, 118, 0, 0, 4, 71, 101, 110, 65, 117, 116,
+                    104, 65, 112, 112, 108, 201, 182,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 5]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![129, 0, 0, 86, 48]),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![8, 128, 0, 0]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 3, 0, 21, 0, 240, 0, 0, 16, 210, 118, 0, 0, 4, 71, 101, 110, 65, 117, 116,
+                    104, 65, 112, 112, 108, 201, 182,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 5]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![129, 0, 0, 86, 48]),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![8, 128, 0, 0]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 3, 0, 21, 0, 240, 0, 0, 16, 210, 118, 0, 0, 4, 71, 101, 110, 65, 117, 116,
+                    104, 65, 112, 112, 108, 201, 182,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 5]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![129, 0, 0, 86, 48]),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![8, 128, 0, 0]),
+            I2CTransaction::write(48, vec![128, 192, 0, 0, 10, 154]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 3, 0, 21, 0, 240, 0, 0, 16, 210, 118, 0, 0, 4, 71, 101, 110, 65, 117, 116,
+                    104, 65, 112, 112, 108, 201, 182,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 10]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![0, 0, 5, 0, 0, 0, 0, 0, 20, 135]),
+            I2CTransaction::write(48, vec![128, 128, 0, 0, 12, 236]),
+            I2CTransaction::write(
+                48,
+                vec![
+                    128, 4, 0, 11, 0, 176, 226, 0, 6, 1, 0, 3, 97, 98, 99, 205, 31,
+                ],
+            ),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![200, 128, 0, 5]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(48, vec![129, 0, 0, 86, 48]),
+            I2CTransaction::write(48, vec![130]),
+            I2CTransaction::read(48, vec![72, 128, 0, 45]),
+            I2CTransaction::write(48, vec![128]),
+            I2CTransaction::read(
+                48,
+                vec![
+                    5, 0, 40, 0, 0, 0, 0, 35, 1, 0, 32, 186, 120, 22, 191, 143, 1, 207, 234, 65,
+                    65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163, 150, 23, 122, 156, 180, 16, 255,
+                    97, 242, 0, 21, 173, 113, 98,
+                ],
+            ),
+            I2CTransaction::write(48, vec![128, 129, 0, 0, 86, 48]),
         ]);
+
         use sha2::{Digest, Sha256};
 
         let samplebits = ['a' as u8, 'b' as u8, 'c' as u8];
