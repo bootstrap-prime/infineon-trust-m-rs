@@ -77,45 +77,27 @@ where
     }
 
     fn read_i2c(&mut self, addr: u8, data: &mut [u8]) -> bool {
-        // defmt::info!("tried to read i2c");
-
-        match self.i2c.read(addr, data) {
-            Ok(()) => true,
-            Err(e) => panic!("failed to read i2c: {:?}", e),
+        loop {
+            match self.i2c.read(addr, data) {
+                Ok(()) => {
+                    // defmt::info!("tried to read i2c addr: {} data: {}", addr, data);
+                    break true;
+                }
+                Err(e) => panic!("failed to read i2c: {:?}", e),
+            }
         }
     }
     fn write_i2c(&mut self, addr: u8, data: &[u8]) -> bool {
+        // defmt::info!("tried to write i2c addr: {} data: {}", addr, data);
+
         // this must loop for at least 100ms. I don't know how to do that without pulling in the timer, so 100 loops.
         // as of this: https://github.com/Infineon/optiga-trust-m/issues/39
         // pg 9: https://github.com/Infineon/optiga-trust-m/blob/develop/documents/Infineon_I2C_Protocol_v2.03.pdf
-        // println!("tried to write i2c {:?}, addr {:x}", data, addr);
 
-        // let mut counter = 0;
-        // loop {
-        //     counter += 1;
-
-        //     // #[cfg(not(any(test, feature = "tester")))]
-        //     // defmt::trace!("{}", counter);
-
-        match self.i2c.write(addr, data) {
-            Ok(()) => {
-                // #[cfg(not(any(test, feature = "tester")))]
-                // defmt::trace!("success");
-                // break true;
-                true
-            }
-            Err(e) => {
-                // if counter >= 100 {
-                //     panic!("failed to write i2c: {:?}", e)
-                // } else {
-                //     #[cfg(not(any(test, feature = "tester")))]
-                //     defmt::trace!(
-                //         "failed to write i2c: {}",
-                //         alloc::format!("{:?}", e).as_str()
-                //     );
-                // }
-                false
-                //}
+        loop {
+            match self.i2c.write(addr, data) {
+                Ok(()) => break true,
+                Err(_e) => (), // false,
             }
         }
     }
