@@ -175,8 +175,6 @@ pub enum OptigaStatus {
 
 impl From<u16> for OptigaStatus {
     fn from(numeric_error: u16) -> OptigaStatus {
-        use core::convert::TryFrom;
-
         use OptigaStatus::*;
         if let Ok(e) = numeric_error.try_into() {
             Busy(e)
@@ -266,8 +264,6 @@ impl OptigaM {
     // https://github.com/Infineon/arduino-optiga-trust-m/blob/master/examples/calculateHash/calculateHash.ino
 
     unsafe fn set_generic_data(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
-        use optiga_m_sys::cbindings;
-
         let offset = 0;
 
         optiga_lib_status = OPTIGA_LIB_BUSY as u16;
@@ -282,8 +278,6 @@ impl OptigaM {
     }
 
     unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
-        use optiga_m_sys::cbindings;
-
         let offset = 0;
 
         let mut len: u16 = data.len() as u16;
