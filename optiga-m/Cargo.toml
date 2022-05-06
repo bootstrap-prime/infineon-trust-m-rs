@@ -9,6 +9,7 @@ resolver = "2"
 [dev-dependencies]
 embedded-hal-mock = "0.8.0"
 optiga-m-sys = { path = "../optiga-m-sys", features = ["tester"] }
+sha2 = "0.10.2"
 
 [dependencies]
 defmt = "0.3.0"
