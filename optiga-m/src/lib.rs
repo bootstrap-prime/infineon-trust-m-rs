@@ -81,7 +81,7 @@ pub enum DeviceError {
     ///Invalid Length field in command
     InvalidLenField = 0x8004,
     ///Invalid parameter in command data field
-    InvalidParameterInDataField = 0x8005,
+    InvalidParameterInCmdDataField = 0x8005,
     ///Internal process error
     InternalProcessError = 0x8006,
     ///Access conditions are not satisfied
@@ -218,7 +218,115 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
     }
 }
 
+#[repr(u16)]
+enum OID {
+    /// Global Life Cycle State
+    GlobalLifeCycleStatus = 0xE0C0,
+    /// Global Security Status
+    GlobalSecurityStatus = 0xE0C1,
+    /// Coprocessor UID
+    CoprocessorUid = 0xE0C2,
+    /// Global Life Cycle State
+    SleepModeActivationDelay = 0xE0C3,
+    /// Current limitation
+    CurrentLimitation = 0xE0C4,
+    /// Security Event Counter
+    SecurityEventCounter = 0xE0C5,
+    /// Device Public Key Certificate issued by IFX
+    DevicePubkeyCertIFX = 0xE0E0,
+    /// Project-Specific device Public Key Certificate
+    DevicePubkeyCertPrjspc1 = 0xE0E1,
+    /// Project-Specific device Public Key Certificate
+    DevicePubkeyCertPrjspc2 = 0xE0E2,
+    /// Project-Specific device Public Key Certificate
+    DevicePubkeyCertPrjspc3 = 0xE0E3,
+    /// First Device Private Key
+    DevicePrikey1 = 0xE0F0,
+    /// Second Device Private Key
+    DevicePrikey2 = 0xE0F1,
+    /// Third Device Private Key
+    DevicePrikey3 = 0xE0F2,
+    /// Fourth Device Private Key
+    DevicePrikey4 = 0xE0F3,
+    /// First RSA Device Private Key
+    DevicePrikeyRSA1 = 0xE0FC,
+    /// Second RSA Device Private Key
+    DevicePrikeyRSA2 = 0xE0FD,
+    /// Application Life Cycle Status
+    ApplicationLifeCycleStatus = 0xF1C0,
+    /// Application Security Status
+    SecurityStatusA = 0xF1C1,
+    /// Error codes
+    ErrorCodes = 0xF1C2,
+}
+
 impl OptigaM {
+    // maybe I need to set a current limit.
+    // https://github.com/Infineon/arduino-optiga-trust-m/blob/24dff4647e75b8334b5a9a4daad6b28ca36d06eb/src/OPTIGATrustM.h#L276=
+    // https://github.com/Infineon/arduino-optiga-trust-m/blob/master/examples/calculateHash/calculateHash.ino
+
+    unsafe fn set_generic_data(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
+        use optiga_m_sys::cbindings;
+
+        let offset = 0;
+
+        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+        handle_error(cbindings::optiga_util_write_data(
+            self.lib_util.as_ptr(),
+            oid as u16,
+            cbindings::OPTIGA_UTIL_ERASE_AND_WRITE as u8,
+            offset,
+            data.as_ptr(),
+            data.len() as u16,
+        ))
+    }
+
+    unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
+        use optiga_m_sys::cbindings;
+
+        let offset = 0;
+
+        let mut len: u16 = data.len() as u16;
+
+        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+        handle_error(cbindings::optiga_util_read_data(
+            self.lib_util.as_ptr(),
+            oid as u16,
+            offset,
+            data.as_mut_ptr(),
+            len as *mut u16,
+        ))?;
+
+        assert!(len == data.len() as u16);
+
+        Ok(())
+    }
+
+    pub fn get_current_limit(&mut self) -> Result<u8, OptigaStatus> {
+        let mut set_current: [u8; 1] = [0];
+        unsafe {
+            self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
+        }
+
+        Ok(set_current[0])
+    }
+
+    // TODO: current as https://docs.rs/uom/latest/uom/si/electric_current/index.html
+    /// Set current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
+    /// This is required for some operations.
+    pub fn set_current_limit(&mut self, current: u8) -> Result<(), OptigaStatus> {
+        unsafe {
+            self.set_generic_data(OID::CurrentLimitation, core::slice::from_ref(&current))?;
+        }
+        let mut set_current: [u8; 1] = [0];
+        unsafe {
+            self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
+        }
+
+        assert_eq!(set_current[0], current);
+        Ok(())
+    }
+
     pub fn new<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(
         rst: RSTPin,
         pwr: VCCPin,
