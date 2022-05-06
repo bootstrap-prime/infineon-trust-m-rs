@@ -490,8 +490,6 @@ mod tests {
         use embedded_hal_mock::i2c::Transaction as I2CTransaction;
         use embedded_hal_mock::{i2c::Mock as I2CMock, pin::Mock as PinMock};
 
-        println!("hi");
-
         let mut rstpin = PinMock::new(&[]);
         let mut vccpin = rstpin.clone();
         let mut i2cpin = I2CMock::new(&[
@@ -509,9 +507,20 @@ mod tests {
             ),
             I2CTransaction::write(48, vec![130]),
         ]);
+        use sha2::{Digest, Sha256};
+
+        let samplebits = ['a' as u8, 'b' as u8, 'c' as u8];
+
+        let mut known_hash = Sha256::new();
+        for bit in samplebits {
+            known_hash.update(&[bit]);
+        }
+        let known_good_hash_result = known_hash.finalize();
 
         let mut device = OptigaM::new(rstpin, vccpin, i2cpin);
 
-        let optiga_result = device.sha256(&[0, 1, 2, 3]).unwrap();
+        let optiga_result = device.sha256(&samplebits).unwrap();
+
+        assert_eq!(optiga_result, known_good_hash_result[..]);
     }
 }
