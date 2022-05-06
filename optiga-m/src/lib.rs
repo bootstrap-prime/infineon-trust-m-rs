@@ -373,7 +373,7 @@ impl OptigaM {
 
         unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(optiga_util_open_application(lib_util.as_ptr(), false as u8))
+            handle_error(optiga_util_open_application(lib_util.as_ptr(), 0))
                 .expect("was unable to initialize utility");
         }
 
@@ -430,10 +430,9 @@ impl OptigaM {
     }
 
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
-        let mut hash_context_buffer: [u8; 130] = [0; 130];
-        let mut hash_buffer: [u8; 32] = [0; 32];
-
         // initialize hash context
+        let mut hash_context_buffer: [u8; 130] = [0; 130];
+
         let mut hash_context: optiga_hash_context_t = {
             optiga_hash_context {
                 context_buffer: hash_context_buffer.as_mut_ptr(),
@@ -442,46 +441,48 @@ impl OptigaM {
             }
         };
 
-        let hash_data_context: hash_data_from_host_t = hash_data_from_host {
+        let hash_data_host: hash_data_from_host_t = hash_data_from_host {
             buffer: bits_to_hash.as_ptr(),
             length: bits_to_hash.len() as u32,
         };
 
-        use core::ptr::addr_of_mut;
+        use core::ptr::{addr_of, addr_of_mut};
+
+        #[cfg(not(test))]
+        defmt::trace!("starting hash");
 
         unsafe {
-            #[cfg(not(test))]
-            defmt::trace!("starting hash");
-
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_start(
                 self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
             ))?;
+        }
 
-            #[cfg(not(test))]
-            defmt::trace!("started hash");
+        #[cfg(not(test))]
+        defmt::trace!("started hash");
 
+        unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_update(
                 self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
                 OPTIGA_CRYPT_HOST_DATA as u8,
-                &hash_data_context as *const _ as *const c_void,
+                addr_of!(hash_data_host) as *const c_void,
             ))?;
+        }
 
-            #[cfg(not(test))]
-            defmt::trace!("updated hash with data");
+        #[cfg(not(test))]
+        defmt::trace!("updated hash with data");
 
+        let mut hash_buffer: [u8; 32] = [0; 32];
+        unsafe {
             optiga_lib_status = OPTIGA_LIB_BUSY as u16;
             handle_error(optiga_crypt_hash_finalize(
                 self.lib_crypt.as_ptr(),
                 addr_of_mut!(hash_context),
                 hash_buffer.as_mut_ptr(),
             ))?;
-
-            #[cfg(not(test))]
-            defmt::trace!("finalized hash, returning");
         }
 
         Ok(hash_buffer)
