@@ -208,11 +208,32 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
             defmt::trace!("processed");
 
             match optiga_lib_status.into() {
-                OptigaStatus::Success(_) => Ok(()),
-                e => Err(e),
+                OptigaStatus::Success(_) => {
+                    #[cfg(not(any(test, feature = "tester")))]
+                    defmt::trace!("returned success");
+                    Ok(())
+                }
+                e => {
+                    extern crate alloc;
+                    #[cfg(not(any(test, feature = "tester")))]
+                    defmt::trace!(
+                        "did not return success, err {}",
+                        alloc::format!("{:?}", e).as_str()
+                    );
+
+                    Err(e)
+                }
             }
         }
-        e => Err(e),
+        e => {
+            extern crate alloc;
+            #[cfg(not(any(test, feature = "tester")))]
+            defmt::trace!(
+                "did not return success, err {}",
+                alloc::format!("{:?}", e).as_str()
+            );
+            Err(e)
+        }
     }
 }
 
