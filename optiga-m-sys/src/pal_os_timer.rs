@@ -7,7 +7,7 @@ use std::time::Instant;
 use crate::cbindings::{pal_status_t, PAL_STATUS_SUCCESS};
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_os_timer_delay_in_milliseconds(milliseconds: u16) {
+pub extern "C" fn pal_os_timer_delay_in_milliseconds(milliseconds: u16) {
     #[cfg(not(feature = "tester"))]
     delay_ms(milliseconds.into());
     #[cfg(feature = "tester")]
@@ -15,7 +15,7 @@ pub unsafe extern "C" fn pal_os_timer_delay_in_milliseconds(milliseconds: u16) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_os_timer_get_time_in_milliseconds() -> u32 {
+pub extern "C" fn pal_os_timer_get_time_in_milliseconds() -> u32 {
     #[cfg(feature = "tester")]
     {
         crate::since_started.elapsed().as_millis() as u32
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn pal_os_timer_get_time_in_milliseconds() -> u32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_os_timer_get_time_in_microseconds() -> u32 {
+pub extern "C" fn pal_os_timer_get_time_in_microseconds() -> u32 {
     #[cfg(feature = "tester")]
     {
         crate::since_started.elapsed().as_micros() as u32
@@ -39,11 +39,11 @@ pub unsafe extern "C" fn pal_os_timer_get_time_in_microseconds() -> u32 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_timer_deinit() -> pal_status_t {
+pub extern "C" fn pal_timer_deinit() -> pal_status_t {
     PAL_STATUS_SUCCESS.into()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn pal_timer_init() -> pal_status_t {
+pub extern "C" fn pal_timer_init() -> pal_status_t {
     PAL_STATUS_SUCCESS.into()
 }
