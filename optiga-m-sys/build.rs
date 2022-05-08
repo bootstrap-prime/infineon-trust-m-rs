@@ -58,6 +58,8 @@ fn main() -> anyhow::Result<()> {
                         && e.file_name().unwrap() != "pal_crypt_mbedtls.c"
                 }),
         )
+        .flag("-O")
+        .opt_level(0)
         .compile("optiga-m-sys");
 
     let bindings = bindgen::Builder::default()

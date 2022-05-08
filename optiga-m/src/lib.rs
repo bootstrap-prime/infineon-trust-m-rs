@@ -487,7 +487,6 @@ impl OptigaM {
                 hash_buffer.as_mut_ptr(),
             ))?;
         }
-        // defmt::trace!("got through here");
 
         Ok(hash_buffer)
     }
