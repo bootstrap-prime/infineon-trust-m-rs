@@ -64,7 +64,7 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
     os_event.callback_registered = callback;
     os_event.callback_ctx = callback_args;
 
-    struct CallbackCtx(NonNull<*mut cty::c_void>);
+    struct CallbackCtx(NonNull<cty::c_void>);
     unsafe impl Send for CallbackCtx {}
     unsafe impl Sync for CallbackCtx {}
     impl CallbackCtx {
