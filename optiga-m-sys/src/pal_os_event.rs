@@ -64,23 +64,22 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
     os_event.callback_registered = callback;
     os_event.callback_ctx = callback_args;
 
-    struct CallbackCtx(*mut cty::c_void);
+    struct CallbackCtx(NonNull<*mut cty::c_void>);
     unsafe impl Send for CallbackCtx {}
     unsafe impl Sync for CallbackCtx {}
     impl CallbackCtx {
         unsafe fn callfunc(self, callback: cbindings::register_callback) {
             if let Some(callback) = callback {
-                let CallbackCtx(context) = self;
-                let context: *mut c_void = NonNull::new(context)
-                    .expect("callback context was null")
-                    .as_ptr();
+                assert!(!(callback as *mut c_void).is_null());
 
-                callback(context);
+                let CallbackCtx(context) = self;
+                callback(context.as_ptr());
             }
         }
     }
 
-    let context = CallbackCtx(os_event.callback_ctx);
+    let context =
+        CallbackCtx(NonNull::new(os_event.callback_ctx).expect("callback context was null"));
 
     let timer: &mut _ = unsafe { pal_os_event_cback_timer.get_or_insert(Timer::default()) };
 

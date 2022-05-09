@@ -54,13 +54,15 @@ pub extern "C" fn pal_i2c_read(
     };
 
     if let Some(handler) = NonNull::new(ctx.upper_layer_event_handler).map(NonNull::as_ptr) {
-        if let Some(context) = NonNull::new(ctx.p_upper_layer_ctx).map(NonNull::as_ptr) {
-            let handler: cbindings::upper_layer_callback_t =
-                Some(unsafe { core::mem::transmute(handler) });
-            let handler = handler.unwrap();
-            unsafe {
-                handler(context, handler_result);
-            }
+        let context = NonNull::new(ctx.p_upper_layer_ctx)
+            .map(NonNull::as_ptr)
+            .unwrap();
+
+        let handler: cbindings::upper_layer_callback_t =
+            Some(unsafe { core::mem::transmute(handler) });
+        let handler = handler.unwrap();
+        unsafe {
+            handler(context, handler_result);
         }
     }
 
@@ -97,14 +99,17 @@ pub extern "C" fn pal_i2c_write(
     };
 
     if let Some(handler) = NonNull::new(ctx.upper_layer_event_handler).map(NonNull::as_ptr) {
-        if let Some(context) = NonNull::new(ctx.p_upper_layer_ctx).map(NonNull::as_ptr) {
-            let handler: cbindings::upper_layer_callback_t =
-                Some(unsafe { core::mem::transmute(handler) });
-            let handler = handler.unwrap();
-            unsafe {
-                handler(context, handler_result);
-            }
+        let context = NonNull::new(ctx.p_upper_layer_ctx)
+            .map(NonNull::as_ptr)
+            .unwrap();
+
+        let handler: cbindings::upper_layer_callback_t =
+            Some(unsafe { core::mem::transmute(handler) });
+        let handler = handler.unwrap();
+        unsafe {
+            handler(context, handler_result);
         }
     }
+
     fn_result
 }
