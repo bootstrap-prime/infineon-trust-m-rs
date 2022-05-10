@@ -83,7 +83,7 @@ where
                     // defmt::info!("tried to read i2c addr: {} data: {}", addr, data);
                     break true;
                 }
-                Err(e) => panic!("failed to read i2c: {:?}", e),
+                Err(e) => (), // panic!("failed to read i2c: {:?}", e)
             }
         }
     }
