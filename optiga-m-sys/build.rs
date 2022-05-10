@@ -5,6 +5,32 @@ fn main() -> anyhow::Result<()> {
     let crate_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     let rustbindings = out_dir.clone().join("rustbindings.h");
+    let target = env::var("TARGET")?;
+
+    let bindings = bindgen::Builder::default()
+        .header("optiga-trust-m/optiga/include/optiga/optiga_util.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_event.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_timer.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_i2c.h")
+        .header("optiga-trust-m/optiga/include/optiga/optiga_crypt.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_logger.h")
+        .header("optiga-trust-m/optiga/include/optiga/pal/pal_gpio.h")
+        .clang_arg(format!("--target={}", target))
+        .clang_arg("-Ioptiga-trust-m/optiga/include/")
+        .detect_include_paths(true)
+        .layout_tests(false)
+        .use_core()
+        .ctypes_prefix("cty")
+        .rustfmt_bindings(true)
+        .fit_macro_constants(true)
+        .generate()
+        .expect("Unable to generate bindings");
+
+    let out_path = PathBuf::from(env::var("OUT_DIR")?);
+    bindings
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Couldn't write bindings!");
 
     let io_bindings = cbindgen::Builder::new();
 
@@ -21,7 +47,6 @@ fn main() -> anyhow::Result<()> {
         .expect("Unable to generate bindings")
         .write_to_file(&rustbindings);
 
-    let target = env::var("TARGET")?;
     let mut builder = cc::Build::new();
 
     let _builder = builder
@@ -61,31 +86,6 @@ fn main() -> anyhow::Result<()> {
         .flag("-O")
         .opt_level(0)
         .compile("optiga-m-sys");
-
-    let bindings = bindgen::Builder::default()
-        .header("optiga-trust-m/optiga/include/optiga/optiga_util.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_event.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal_os_timer.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal_i2c.h")
-        .header("optiga-trust-m/optiga/include/optiga/optiga_crypt.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal_logger.h")
-        .header("optiga-trust-m/optiga/include/optiga/pal/pal_gpio.h")
-        .clang_arg(format!("--target={}", target))
-        .clang_arg("-Ioptiga-trust-m/optiga/include/")
-        .detect_include_paths(true)
-        .layout_tests(false)
-        .use_core()
-        .ctypes_prefix("cty")
-        .rustfmt_bindings(true)
-        .fit_macro_constants(true)
-        .generate()
-        .expect("Unable to generate bindings");
-
-    let out_path = PathBuf::from(env::var("OUT_DIR")?);
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
 
     println!("rerun-if-changed=./optiga-trust-m");
 
