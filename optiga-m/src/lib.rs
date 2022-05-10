@@ -330,6 +330,8 @@ impl OptigaM {
     /// Set current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
     /// This is required for some operations.
     pub fn set_current_limit(&mut self, current: u8) -> Result<(), OptigaStatus> {
+        assert!(6 < current && current < 15);
+
         unsafe {
             self.set_generic_data(OID::CurrentLimitation, core::slice::from_ref(&current))?;
         }
