@@ -15,6 +15,8 @@ use optiga_m_sys::pal_os_event::pal_os_event_process;
 
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
+use uom::si::electric_current::milliampere;
+use uom::si::u8::ElectricCurrent;
 
 unsafe extern "C" fn optiga_util_callback(
     _context: *mut c_void,
@@ -317,30 +319,34 @@ impl OptigaM {
         Ok(())
     }
 
-    pub fn get_current_limit(&mut self) -> Result<u8, OptigaStatus> {
+    pub fn get_current_limit(&mut self) -> Result<ElectricCurrent, OptigaStatus> {
         let mut set_current: [u8; 1] = [0];
         unsafe {
             self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
         }
 
-        Ok(set_current[0])
+        Ok(ElectricCurrent::new::<milliampere>(set_current[0]))
     }
 
-    // TODO: current as https://docs.rs/uom/latest/uom/si/electric_current/index.html
     /// Set current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
     /// This is required for some operations.
-    pub fn set_current_limit(&mut self, current: u8) -> Result<(), OptigaStatus> {
-        assert!(6 < current && current < 15);
+    pub fn set_current_limit(&mut self, milliamps: ElectricCurrent) -> Result<(), OptigaStatus> {
+        assert!(
+            (ElectricCurrent::new::<milliampere>(6)..=ElectricCurrent::new::<milliampere>(15))
+                .contains(&milliamps)
+        );
+
+        defmt::info!("mA: {}", &milliamps.value);
 
         unsafe {
-            self.set_generic_data(OID::CurrentLimitation, core::slice::from_ref(&current))?;
-        }
-        let mut set_current: [u8; 1] = [0];
-        unsafe {
-            self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
+            self.set_generic_data(
+                OID::CurrentLimitation,
+                core::slice::from_ref(&milliamps.get::<milliampere>()),
+            )?;
         }
 
-        assert_eq!(set_current[0], current);
+        debug_assert!(self.get_current_limit()? == milliamps);
+
         Ok(())
     }
 
@@ -465,14 +471,8 @@ impl OptigaM {
 
         use core::ptr::{addr_of, addr_of_mut};
 
-        // let default_current_limit = self.get_current_limit()?;
-
-        // defmt::trace!("current current limit: {}", default_current_limit);
-
-        // assert!(default_current_limit == 6);
-
         // // Set current limit
-        // self.set_current_limit(15)?;
+        // self.set_current_limit(ElectricCurrent::new::<milliampere>(15))?;
 
         #[cfg(not(test))]
         defmt::trace!("starting hash");
