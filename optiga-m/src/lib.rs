@@ -15,8 +15,6 @@ use optiga_m_sys::pal_os_event::pal_os_event_process;
 
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
-use uom::si::electric_current::milliampere;
-use uom::si::u8::ElectricCurrent;
 
 unsafe extern "C" fn optiga_util_callback(
     _context: *mut c_void,
@@ -319,30 +317,24 @@ impl OptigaM {
         Ok(())
     }
 
-    pub fn get_current_limit(&mut self) -> Result<ElectricCurrent, OptigaStatus> {
+    pub fn get_current_limit(&mut self) -> Result<u8, OptigaStatus> {
         let mut set_current: [u8; 1] = [0];
         unsafe {
             self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
         }
 
-        Ok(ElectricCurrent::new::<milliampere>(set_current[0]))
+        Ok(set_current[0])
     }
 
     /// Set current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
     /// This is required for some operations.
-    pub fn set_current_limit(&mut self, milliamps: ElectricCurrent) -> Result<(), OptigaStatus> {
-        assert!(
-            (ElectricCurrent::new::<milliampere>(6)..=ElectricCurrent::new::<milliampere>(15))
-                .contains(&milliamps)
-        );
+    pub fn set_current_limit(&mut self, milliamps: u8) -> Result<(), OptigaStatus> {
+        assert!((6..=15).contains(&milliamps));
 
-        defmt::info!("mA: {}", &milliamps.value);
+        defmt::info!("mA: {}", &milliamps);
 
         unsafe {
-            self.set_generic_data(
-                OID::CurrentLimitation,
-                core::slice::from_ref(&milliamps.get::<milliampere>()),
-            )?;
+            self.set_generic_data(OID::CurrentLimitation, core::slice::from_ref(&milliamps))?;
         }
 
         debug_assert!(self.get_current_limit()? == milliamps);
@@ -471,8 +463,8 @@ impl OptigaM {
 
         use core::ptr::{addr_of, addr_of_mut};
 
-        // // Set current limit
-        // self.set_current_limit(ElectricCurrent::new::<milliampere>(15))?;
+        // Set current limit
+        self.set_current_limit(15)?;
 
         #[cfg(not(test))]
         defmt::trace!("starting hash");
