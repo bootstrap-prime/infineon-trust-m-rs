@@ -345,6 +345,7 @@ impl OptigaM {
     pub fn set_current_limit(&mut self, milliamps: u8) -> Result<(), OptigaStatus> {
         assert!((6..=15).contains(&milliamps));
 
+        #[cfg(not(any(test, feature = "tester")))]
         defmt::info!("mA: {}", &milliamps);
 
         unsafe {

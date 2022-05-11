@@ -39,8 +39,6 @@ pub extern "C" fn pal_gpio_set_high(_p_gpio_context: *const pal_gpio_t) {
                 e
             ),
         };
-
-        defmt::info!("setting pin {} high", pin);
     }
 }
 
@@ -69,7 +67,5 @@ pub extern "C" fn pal_gpio_set_low(_p_gpio_context: *const pal_gpio_t) {
                 e
             ),
         };
-
-        defmt::info!("setting pin {} low", pin);
     }
 }
