@@ -237,6 +237,18 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
     }
 }
 
+fn call_optiga_func<T: FnOnce() -> u16>(returned_process: T) -> Result<(), OptigaStatus> {
+    unsafe {
+        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+    }
+
+    unsafe {
+        handle_error(returned_process())?;
+    }
+
+    Ok(())
+}
+
 #[repr(u16)]
 enum OID {
     /// Global Life Cycle State
@@ -287,15 +299,16 @@ impl OptigaM {
     unsafe fn set_generic_data(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
         let offset = 0;
 
-        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-        handle_error(cbindings::optiga_util_write_data(
-            self.lib_util.as_ptr(),
-            oid as u16,
-            cbindings::OPTIGA_UTIL_ERASE_AND_WRITE as u8,
-            offset,
-            data.as_ptr(),
-            data.len() as u16,
-        ))
+        call_optiga_func(|| {
+            cbindings::optiga_util_write_data(
+                self.lib_util.as_ptr(),
+                oid as u16,
+                cbindings::OPTIGA_UTIL_ERASE_AND_WRITE as u8,
+                offset,
+                data.as_ptr(),
+                data.len() as u16,
+            )
+        })
     }
 
     unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
@@ -303,14 +316,15 @@ impl OptigaM {
 
         let mut len: u16 = data.len() as u16;
 
-        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-        handle_error(cbindings::optiga_util_read_data(
-            self.lib_util.as_ptr(),
-            oid as u16,
-            offset,
-            data.as_mut_ptr(),
-            len as *mut u16,
-        ))?;
+        call_optiga_func(|| {
+            cbindings::optiga_util_read_data(
+                self.lib_util.as_ptr(),
+                oid as u16,
+                offset,
+                data.as_mut_ptr(),
+                len as *mut u16,
+            )
+        })?;
 
         assert!(len == data.len() as u16);
 
@@ -386,11 +400,8 @@ impl OptigaM {
             .expect("optiga_crypt_create() returned a null pointer")
         };
 
-        unsafe {
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(optiga_util_open_application(lib_util.as_ptr(), 0))
-                .expect("was unable to initialize utility");
-        }
+        call_optiga_func(|| unsafe { optiga_util_open_application(lib_util.as_ptr(), 0) })
+            .expect("was unable to initialize utility");
 
         OptigaM {
             lib_util,
@@ -471,16 +482,15 @@ impl OptigaM {
 
         let mut hash_buffer: [u8; 32] = [0; 32];
 
-        unsafe {
-            optiga_lib_status = OPTIGA_LIB_BUSY as u16;
-            handle_error(cbindings::optiga_crypt_hash(
+        call_optiga_func(|| unsafe {
+            cbindings::optiga_crypt_hash(
                 self.lib_crypt.as_ptr(),
                 optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u32,
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 addr_of!(hash_data_host) as *const c_void,
                 hash_buffer.as_mut_ptr(),
-            ))?;
-        }
+            )
+        })?;
 
         Ok(hash_buffer)
     }
