@@ -507,19 +507,30 @@ impl OptigaM {
         #[cfg(not(test))]
         defmt::trace!("starting hash");
 
-        let mut hash_buffer: [u8; 32] = [0; 32];
+        call_optiga_func(|| unsafe {
+            optiga_crypt_hash_start(self.lib_crypt.as_ptr(), addr_of_mut!(hash_context))
+        })?;
 
         call_optiga_func(|| unsafe {
-            cbindings::optiga_crypt_hash(
+            optiga_crypt_hash_update(
                 self.lib_crypt.as_ptr(),
-                optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u32,
+                addr_of_mut!(hash_context),
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 addr_of!(hash_data_host) as *const c_void,
-                hash_buffer.as_mut_ptr(),
             )
         })?;
 
-        Ok(hash_buffer)
+        let mut digest: [u8; 32] = [0; 32];
+
+        call_optiga_func(|| unsafe {
+            optiga_crypt_hash_finalize(
+                self.lib_crypt.as_ptr(),
+                addr_of_mut!(hash_context),
+                digest.as_mut_ptr(),
+            )
+        })?;
+
+        Ok(digest)
     }
 }
 
