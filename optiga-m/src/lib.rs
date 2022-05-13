@@ -25,12 +25,14 @@ unsafe extern "C" fn optiga_util_callback(
 
 static mut optiga_lib_status: optiga_lib_status_t = 0;
 
+/// Provides high-level access to the Infineon Optiga Trust M hardware secure element.
 pub struct OptigaM {
     lib_crypt: NonNull<optiga_crypt_t>,
     lib_util: NonNull<optiga_util_t>,
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible errors in commanding the secure element.
 #[repr(u16)]
 pub enum CmdError {
     Unspecified = cbindings::OPTIGA_CMD_ERROR,
@@ -39,6 +41,7 @@ pub enum CmdError {
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible communication errors between the host and the secure element.
 #[repr(u16)]
 pub enum CommsError {
     Unspecified = cbindings::OPTIGA_COMMS_ERROR,
@@ -51,6 +54,7 @@ pub enum CommsError {
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible errors that can occur when performing cryptography code.
 #[repr(u16)]
 pub enum CryptError {
     Unspecified = cbindings::OPTIGA_CRYPT_ERROR,
@@ -60,6 +64,7 @@ pub enum CryptError {
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible pure library error codes returned by the internally bound optiga-trust-m host library.
 #[repr(u16)]
 pub enum UtilError {
     Unspecified = cbindings::OPTIGA_UTIL_ERROR,
@@ -69,8 +74,8 @@ pub enum UtilError {
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible errors returned by the device, defined in <https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes>
 #[repr(u16)]
-/// Possible errors returned by the device, defined in https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes
 pub enum DeviceError {
     ///Invalid OID
     InvalidOID = 0x8001,
@@ -139,27 +144,22 @@ pub enum DeviceError {
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible busy codes returned by the internally bound optiga-trust-m host library.
 #[repr(u16)]
 pub enum Busy {
-    Crypt = cbindings::OPTIGA_CRYPT_BUSY as u16,
-    // Comms = cbindings::OPTIGA_COMMS_BUSY,
-    // Cmd = cbindings::OPTIGA_CMD_BUSY,
-    // Util = cbindings::OPTIGA_UTIL_BUSY,
-    // Lib = cbindings::OPTIGA_LIB_BUSY,
+    Busy = cbindings::OPTIGA_CRYPT_BUSY as u16,
 }
 
 #[derive(num_enum::TryFromPrimitive, Debug)]
+/// Possible success codes returned by the internally bound optiga-trust-m host library.
 #[repr(u16)]
 pub enum Successes {
     Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
     // despite the name, apparenly this macro by itself is a success
     Device = cbindings::OPTIGA_DEVICE_ERROR as u16,
-    // Comms = cbindings::OPTIGA_COMMS_SUCCESS,
-    // Crypt = cbindings::OPTIGA_CRYPT_SUCCESS,
-    // Lib = cbindings::OPTIGA_LIB_SUCCESS,
-    // Util = cbindings::OPTIGA_UTIL_SUCCESS,
 }
 
+/// All possible errors that can be returned by this crate.
 #[derive(Debug)]
 #[repr(u16)]
 pub enum OptigaStatus {
@@ -331,6 +331,7 @@ impl OptigaM {
         Ok(())
     }
 
+    /// Get current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
     pub fn get_current_limit(&mut self) -> Result<u8, OptigaStatus> {
         let mut set_current: [u8; 1] = [0];
         unsafe {
@@ -357,6 +358,7 @@ impl OptigaM {
         Ok(())
     }
 
+    /// Builds and returns a new instance of the SE. Only one device should be connected to the microcontroller at a time, and only one device can be used at a time.
     pub fn new<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(
         rst: RSTPin,
         pwr: VCCPin,
@@ -410,6 +412,7 @@ impl OptigaM {
         }
     }
 
+    /// Test that the i2c communication with the SE is functioning properly.
     pub fn test_optiga_communication(&mut self) -> Result<(), OptigaStatus> {
         let mut transmit_buffer: [u8; 1] = [0x82];
         let mut recv_buffer: [u8; 4] = [0; 4];
@@ -474,9 +477,6 @@ impl OptigaM {
         };
 
         use core::ptr::{addr_of, addr_of_mut};
-
-        // Set current limit
-        self.set_current_limit(15)?;
 
         #[cfg(not(test))]
         defmt::trace!("starting hash");
