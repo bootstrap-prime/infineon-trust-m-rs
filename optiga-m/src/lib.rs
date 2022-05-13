@@ -3,6 +3,7 @@
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::ptr::NonNull;
+use num_enum::IntoPrimitive;
 use optiga_m_sys::cbindings::{self, optiga_util_open_application, optiga_util_t};
 use optiga_m_sys::cbindings::{
     hash_data_from_host, hash_data_from_host_t, optiga_crypt_create, optiga_crypt_hash_finalize,
@@ -31,8 +32,8 @@ pub struct OptigaM {
     lib_util: NonNull<optiga_util_t>,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible errors in commanding the secure element.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum CmdError {
     Unspecified = cbindings::OPTIGA_CMD_ERROR,
@@ -40,8 +41,8 @@ pub enum CmdError {
     MemoryInsufficient = cbindings::OPTIGA_CMD_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible communication errors between the host and the secure element.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum CommsError {
     Unspecified = cbindings::OPTIGA_COMMS_ERROR,
@@ -53,8 +54,8 @@ pub enum CommsError {
     StackMemory = cbindings::OPTIGA_COMMS_ERROR_STACK_MEMORY,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible errors that can occur when performing cryptography code.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum CryptError {
     Unspecified = cbindings::OPTIGA_CRYPT_ERROR,
@@ -63,8 +64,8 @@ pub enum CryptError {
     MemoryInsufficient = cbindings::OPTIGA_CRYPT_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible pure library error codes returned by the internally bound optiga-trust-m host library.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum UtilError {
     Unspecified = cbindings::OPTIGA_UTIL_ERROR,
@@ -73,8 +74,8 @@ pub enum UtilError {
     MemoryInsufficient = cbindings::OPTIGA_UTIL_ERROR_MEMORY_INSUFFICIENT,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible errors returned by the device, defined in <https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes>
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum DeviceError {
     ///Invalid OID
@@ -143,15 +144,15 @@ pub enum DeviceError {
     DecryptionFailure = 0x802E,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible busy codes returned by the internally bound optiga-trust-m host library.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum Busy {
     Busy = cbindings::OPTIGA_CRYPT_BUSY as u16,
 }
 
-#[derive(num_enum::TryFromPrimitive, Debug)]
 /// Possible success codes returned by the internally bound optiga-trust-m host library.
+#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum Successes {
     Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
@@ -171,6 +172,23 @@ pub enum OptigaStatus {
     UtilError(UtilError),
     DeviceError(DeviceError),
     Success(Successes),
+}
+
+impl From<OptigaStatus> for u16 {
+    fn from(error: OptigaStatus) -> u16 {
+        use OptigaStatus::*;
+
+        match error {
+            Unknown(e) => e,
+            Busy(e) => e.into(),
+            CmdError(e) => e.into(),
+            CommsError(e) => e.into(),
+            CryptError(e) => e.into(),
+            UtilError(e) => e.into(),
+            DeviceError(e) => e.into(),
+            Success(e) => e.into(),
+        }
+    }
 }
 
 impl From<u16> for OptigaStatus {
@@ -459,6 +477,43 @@ impl OptigaM {
         unsafe { handle_error(pal_return_status) }
     }
 
+    /// Get random slice of bytes from the device's TRNG.
+    /// Users should not use this function directly! they should use rand_core methods and the implementation of RngCore. This is slow!
+    pub fn random(&mut self, bytes: &mut [u8]) -> Result<(), OptigaStatus> {
+        // there is a valid range of bytes you can request, 8 to 256. any higher or lower, the device will get mad at you.
+        // rust doesn't provide a mechanism to limit the size of a byte, and I don't want to add a new error code, so it should handle arbitrary slice sizes
+
+        // FnMut(&mut [u8]) -> Result<(), OptigaStatus>, interface to internal cbindings optiga call
+        let random_internal = |buf_chunk: &mut [u8]| {
+            call_optiga_func(|| unsafe {
+                cbindings::optiga_crypt_random(
+                    self.lib_crypt.as_ptr(),
+                    cbindings::optiga_rng_type_OPTIGA_RNG_TYPE_TRNG,
+                    buf_chunk.as_mut_ptr(),
+                    buf_chunk.len().try_into().unwrap(),
+                )
+            })
+        };
+
+        // chunk the slice into the maximum length for the slice per call to the device.
+        for chunk in bytes.chunks_mut(256) {
+            if chunk.len() < 8 {
+                // if the size is less than the minimum allowed length, request the minimum length and discard unused bytes.
+                let mut buf: [u8; 8] = [0; 8];
+
+                random_internal(&mut buf)?;
+
+                // self.random_internal(&mut buf)?;
+
+                chunk.copy_from_slice(&buf[..chunk.len()]);
+            } else {
+                random_internal(chunk)?;
+                // self.random_internal(chunk)?;
+            }
+        }
+
+        Ok(())
+    }
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
         // initialize hash context
         let mut hash_context_buffer: [u8; 130] = [0; 130];
@@ -496,6 +551,48 @@ impl OptigaM {
         Ok(hash_buffer)
     }
 }
+
+impl From<OptigaStatus> for rand_core::Error {
+    fn from(error: OptigaStatus) -> rand_core::Error {
+        TryInto::<core::num::NonZeroU32>::try_into(Into::<u16>::into(error) as u32)
+            .unwrap()
+            .into()
+    }
+}
+
+impl From<rand_core::Error> for OptigaStatus {
+    fn from(error: rand_core::Error) -> OptigaStatus {
+        let error: u16 = error
+            .code()
+            .map(|e| e.get().try_into().ok())
+            .flatten()
+            .unwrap();
+
+        error.into()
+    }
+}
+
+impl rand_core::RngCore for OptigaM {
+    fn next_u32(&mut self) -> u32 {
+        rand_core::impls::next_u32_via_fill(self)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        rand_core::impls::next_u64_via_fill(self)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.try_fill_bytes(dest).unwrap();
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.random(dest)?;
+
+        Ok(())
+    }
+}
+
+impl rand_core::CryptoRng for OptigaM {}
 
 #[cfg(test)]
 mod tests {
