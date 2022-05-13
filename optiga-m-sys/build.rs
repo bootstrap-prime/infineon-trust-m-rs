@@ -83,7 +83,6 @@ fn main() -> anyhow::Result<()> {
                         && e.file_name().unwrap() != "pal_crypt_mbedtls.c"
                 }),
         )
-        .opt_level(1)
         .compile("optiga-m-sys");
 
     println!("rerun-if-changed=./optiga-trust-m");

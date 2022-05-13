@@ -485,7 +485,9 @@ impl OptigaM {
 
     pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
         // initialize hash context
-        let mut hash_context_buffer: [u8; 130] = [0; 130];
+        const CONTEXT_LENGTH: usize =
+            cbindings::optiga_hash_context_length_OPTIGA_HASH_CONTEXT_LENGTH_SHA_256 as usize;
+        let mut hash_context_buffer: [u8; CONTEXT_LENGTH] = [0; CONTEXT_LENGTH];
 
         let mut hash_context: optiga_hash_context_t = {
             optiga_hash_context {
