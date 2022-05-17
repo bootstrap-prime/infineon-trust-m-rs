@@ -156,7 +156,7 @@ pub enum Busy {
 #[repr(u16)]
 pub enum Successes {
     Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
-    // despite the name, apparenly this macro by itself is a success
+    // despite the name, apparently this macro by itself is a success
     Device = cbindings::OPTIGA_DEVICE_ERROR as u16,
 }
 
