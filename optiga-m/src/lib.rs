@@ -516,17 +516,22 @@ impl From<rand_core::Error> for OptigaStatus {
 const OPTIGA_SHA256_CONTEXT_LENGTH: usize =
     cbindings::optiga_hash_context_length_OPTIGA_HASH_CONTEXT_LENGTH_SHA_256 as usize;
 
+extern crate alloc;
+
+use alloc::boxed::Box;
+use core::pin::Pin;
+
 pub struct OptigaSha256<'a> {
     periph: &'a mut OptigaM,
-    hash_context_buffer: [u8; OPTIGA_SHA256_CONTEXT_LENGTH],
+    hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>>,
     hash_context: optiga_hash_context,
 }
 
 impl<'a> OptigaSha256<'a> {
     pub fn new(periph: &'a mut OptigaM) -> Self {
         // initialize hash context
-        let mut hash_context_buffer: [u8; OPTIGA_SHA256_CONTEXT_LENGTH] =
-            [0; OPTIGA_SHA256_CONTEXT_LENGTH];
+        let mut hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>> =
+            Box::pin([0; OPTIGA_SHA256_CONTEXT_LENGTH]);
 
         let mut hash_context: optiga_hash_context_t = {
             optiga_hash_context {
