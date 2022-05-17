@@ -65,7 +65,7 @@ pal_status_t pal_os_datastore_read(uint16_t datastore_id,
             // !!!OPTIGA_LIB_PORTING_REQUIRED
             // This has to be enhanced by user only,
             // if the platform binding shared secret is stored in non-volatile 
-            // memory with a specific location and not as a const text segement 
+            // memory with a specific location and not as a const text segment
             // else updating the share secret content is good enough.
 
             if (*p_buffer_length >= sizeof(optiga_platform_binding_shared_secret))
