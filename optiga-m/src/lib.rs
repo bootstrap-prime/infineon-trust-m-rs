@@ -679,11 +679,17 @@ mod tests {
     #[test]
     fn dont_segfault() {
         use crate::OptigaM;
-        use embedded_hal_mock::i2c::Transaction as I2CTransaction;
+        use embedded_hal_mock::pin::State;
         use embedded_hal_mock::{i2c::Mock as I2CMock, pin::Mock as PinMock};
+        use embedded_hal_mock::{
+            i2c::Transaction as I2CTransaction, pin::Transaction as PinTransaction,
+        };
 
-        let mut rstpin = PinMock::new(&[]);
-        let mut vccpin = rstpin.clone();
+        let mut rstpin = PinMock::new(&[
+            PinTransaction::set(State::Low),
+            PinTransaction::set(State::High),
+        ]);
+        let mut vccpin = PinMock::new(&[]);
         let mut i2cpin = I2CMock::new(&[
             I2CTransaction::write(48, vec![132]),
             I2CTransaction::read(48, vec![0, 0, 1, 144]),
