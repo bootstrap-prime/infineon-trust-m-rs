@@ -609,6 +609,11 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
     fn output_size(&self) -> usize {
         32
     }
+
+    #[cfg(not(no_std))]
+    fn box_clone(&self) -> Box<dyn DynDigest> {
+        unimplemented!("This cannot be safely implemented because the underlying type depends on a physical peripheral.")
+    }
 }
 
 impl<'a> digest::HashMarker for OptigaSha256<'a> {}
