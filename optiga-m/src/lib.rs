@@ -609,11 +609,6 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
     fn output_size(&self) -> usize {
         32
     }
-
-    #[cfg(not(no_std))]
-    fn box_clone(&self) -> Box<dyn DynDigest> {
-        unimplemented!("This cannot be safely implemented because the underlying type depends on a physical peripheral.")
-    }
 }
 
 impl<'a> digest::HashMarker for OptigaSha256<'a> {}
@@ -679,6 +674,8 @@ impl rand_core::CryptoRng for OptigaM {}
 
 #[cfg(test)]
 mod tests {
+    use crate::OptigaSha256;
+
     #[test]
     fn dont_segfault() {
         use crate::OptigaM;
@@ -788,14 +785,22 @@ mod tests {
 
         let mut known_hash = Sha256::new();
         for bit in samplebits {
-            known_hash.update(&[bit]);
+            Digest::update(&mut known_hash, &[bit]);
         }
-        let known_good_hash_result = known_hash.finalize();
+        let known_good_hash_result = Digest::finalize(known_hash);
 
         let mut device = OptigaM::new(rstpin, vccpin, i2cpin);
 
-        let optiga_result = device.sha256(&samplebits).unwrap();
+        let mut optiga_hash_result = [0; 32];
 
-        assert_eq!(optiga_result, known_good_hash_result[..]);
+        use super::DynDigest;
+
+        let mut optiga_result = OptigaSha256::new(&mut device);
+        optiga_result.update(&samplebits);
+        optiga_result
+            .finalize_into(&mut optiga_hash_result)
+            .unwrap();
+
+        assert_eq!(optiga_hash_result, known_good_hash_result[..]);
     }
 }
