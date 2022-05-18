@@ -5,7 +5,7 @@
 
 #[cfg(feature = "tester")]
 lazy_static::lazy_static! {
-    pub static ref since_started: std::time::Instant = std::time::Instant::now();
+    pub static ref SINCE_STARTED: std::time::Instant = std::time::Instant::now();
 }
 
 // ignore all the errors in the generated rust bindings, otherwise this gets really annoying
@@ -20,7 +20,6 @@ pub mod cbindings {
 
 use core::fmt::Debug;
 
-use cbindings::{pal_status_t, PAL_STATUS_SUCCESS};
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
 
@@ -83,7 +82,7 @@ where
                     // defmt::info!("tried to read i2c addr: {} data: {}", addr, data);
                     break true;
                 }
-                Err(e) => (), // panic!("failed to read i2c: {:?}", e)
+                Err(_e) => (), // panic!("failed to read i2c: {:?}", e)
             }
         }
     }

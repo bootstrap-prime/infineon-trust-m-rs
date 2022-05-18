@@ -14,14 +14,14 @@ const DEFAULT_EVENT: cbindings::pal_os_event = cbindings::pal_os_event {
     timeout_us: 0,
 };
 
-static mut pal_os_event_0: Option<cbindings::pal_os_event_t> = Some(DEFAULT_EVENT);
-static mut pal_os_event_cback_timer: Option<Timer> = None;
+static mut PAL_OS_EVENT_0: Option<cbindings::pal_os_event_t> = Some(DEFAULT_EVENT);
+static mut PAL_OS_EVENT_CBACK_TIMER: Option<Timer> = None;
 
 // handle the callback stack
 #[no_mangle]
 pub extern "C" fn pal_os_event_destroy(_event: *mut cbindings::pal_os_event_t) {
     unsafe {
-        pal_os_event_0 = None;
+        PAL_OS_EVENT_0 = None;
     }
 }
 
@@ -30,7 +30,7 @@ pub extern "C" fn pal_os_event_create(
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
-    let event = unsafe { &mut pal_os_event_0.unwrap() as *mut cbindings::pal_os_event_t };
+    let event = unsafe { &mut PAL_OS_EVENT_0.unwrap() as *mut cbindings::pal_os_event_t };
 
     if !callback.is_none() && !callback_args.is_null() {
         pal_os_event_start(event, callback, callback_args);
@@ -41,7 +41,7 @@ pub extern "C" fn pal_os_event_create(
 
 #[no_mangle]
 pub extern "C" fn pal_os_event_trigger_registered_callback() {
-    if let Some(ref mut event) = unsafe { pal_os_event_0 } {
+    if let Some(ref mut event) = unsafe { PAL_OS_EVENT_0 } {
         if let Some(callback) = event.callback_registered {
             unsafe {
                 callback(event.callback_ctx);
@@ -81,12 +81,12 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
     let context =
         CallbackCtx(NonNull::new(os_event.callback_ctx).expect("callback context was null"));
 
-    let timer: &mut _ = unsafe { pal_os_event_cback_timer.get_or_insert(Timer::default()) };
+    let timer: &mut _ = unsafe { PAL_OS_EVENT_CBACK_TIMER.get_or_insert(Timer::default()) };
 
     #[cfg(not(any(feature = "tester", test)))]
     let current_time = core::time::Duration::from_micros(systick::micros());
     #[cfg(any(feature = "tester", test))]
-    let current_time = crate::since_started.elapsed();
+    let current_time = crate::SINCE_STARTED.elapsed();
 
     let deadline = current_time + core::time::Duration::from_micros(time_us as u64);
 
@@ -123,7 +123,7 @@ pub extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event
 
 #[no_mangle]
 pub extern "C" fn pal_os_event_process() {
-    let timer: &mut _ = unsafe { pal_os_event_cback_timer.get_or_insert(Timer::default()) };
+    let timer: &mut _ = unsafe { PAL_OS_EVENT_CBACK_TIMER.get_or_insert(Timer::default()) };
 
     timer.expire({
         #[cfg(not(feature = "tester"))]
@@ -133,7 +133,7 @@ pub extern "C" fn pal_os_event_process() {
 
         #[cfg(feature = "tester")]
         {
-            crate::since_started.elapsed()
+            crate::SINCE_STARTED.elapsed()
         }
     });
 }

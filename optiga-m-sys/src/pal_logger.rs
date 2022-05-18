@@ -35,9 +35,9 @@ pub extern "C" fn pal_logger_write(
     let p_log_data = NonNull::new(p_log_data as *mut _).unwrap().as_ptr();
 
     let data = unsafe { core::slice::from_raw_parts(p_log_data, log_data_length as usize) };
-    if let Ok(data) = core::str::from_utf8(data) {
+    if let Ok(_data) = core::str::from_utf8(data) {
         #[cfg(not(any(test, feature = "tester")))]
-        defmt::warn!("from tpm lib: {}", data);
+        defmt::warn!("from tpm lib: {}", _data);
         PAL_STATUS_SUCCESS.into()
     } else {
         PAL_STATUS_FAILURE.into()

@@ -24,6 +24,15 @@ fn main() -> anyhow::Result<()> {
         .ctypes_prefix("cty")
         .rustfmt_bindings(true)
         .fit_macro_constants(true)
+        .allowlist_var(".*OPTIGA.*")
+        .allowlist_var(".*optiga.*")
+        .allowlist_var(".*PAL.*")
+        .allowlist_type(".*pal_.*")
+        .allowlist_type(".*optiga.*")
+        .allowlist_type("data_blob")
+        .allowlist_type(".*upper_layer_callback_t")
+        .allowlist_function(".*optiga_.*")
+        .allowlist_function(".*pal_.*")
         .generate()
         .expect("Unable to generate bindings");
 

@@ -1,5 +1,5 @@
 use crate::{
-    cbindings::{pal_gpio, pal_gpio_t, pal_status_t, PAL_STATUS_SUCCESS},
+    cbindings::{pal_gpio_t, pal_status_t, PAL_STATUS_SUCCESS},
     OPTIGA_TRUST_M_RESOURCES,
 };
 use core::ptr::NonNull;
