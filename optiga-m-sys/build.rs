@@ -64,6 +64,7 @@ fn main() -> anyhow::Result<()> {
         .flag("-Wno-cast-function-type")
         .flag("-Wno-missing-field-initializers")
         .flag("-Werror-implicit-function-declaration")
+        .flag("-w")
         .include(&out_dir)
         .include("pal")
         .include("optiga-trust-m/optiga/include/")
