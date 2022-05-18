@@ -503,11 +503,7 @@ impl From<OptigaStatus> for rand_core::Error {
 
 impl From<rand_core::Error> for OptigaStatus {
     fn from(error: rand_core::Error) -> OptigaStatus {
-        let error: u16 = error
-            .code()
-            .map(|e| e.get().try_into().ok())
-            .flatten()
-            .unwrap();
+        let error: u16 = error.code().and_then(|e| e.get().try_into().ok()).unwrap();
 
         error.into()
     }

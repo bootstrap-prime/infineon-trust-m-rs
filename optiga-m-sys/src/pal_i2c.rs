@@ -31,7 +31,7 @@ pub extern "C" fn pal_i2c_read(
     length: u16,
 ) -> pal_status_t {
     let p_data = NonNull::new(p_data).unwrap().as_ptr();
-    let mut data = unsafe { core::slice::from_raw_parts_mut(p_data, length.into()) };
+    let data = unsafe { core::slice::from_raw_parts_mut(p_data, length.into()) };
 
     let ctx: &pal_i2c = unsafe {
         NonNull::new(p_i2c_context as *mut _)
@@ -41,7 +41,7 @@ pub extern "C" fn pal_i2c_read(
     let periph = unsafe { OPTIGA_TRUST_M_RESOURCES.as_mut() }
         .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
-    let (fn_result, handler_result) = if periph.as_mut().read_i2c(ctx.slave_address, &mut data) {
+    let (fn_result, handler_result) = if periph.as_mut().read_i2c(ctx.slave_address, data) {
         (
             cbindings::PAL_STATUS_SUCCESS.into(),
             cbindings::PAL_I2C_EVENT_SUCCESS.into(),

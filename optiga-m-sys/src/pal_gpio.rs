@@ -19,8 +19,7 @@ pub extern "C" fn pal_gpio_set_high(_p_gpio_context: *const pal_gpio_t) {
     let potential_pin = unsafe {
         NonNull::new(_p_gpio_context as *mut pal_gpio_t)
             .map(|ctx| ctx.as_ref().p_gpio_hw)
-            .map(NonNull::new)
-            .flatten()
+            .and_then(NonNull::new)
     };
 
     if let Some(pin) = potential_pin {
@@ -47,8 +46,7 @@ pub extern "C" fn pal_gpio_set_low(_p_gpio_context: *const pal_gpio_t) {
     let potential_pin = unsafe {
         NonNull::new(_p_gpio_context as *mut pal_gpio_t)
             .map(|ctx| ctx.as_ref().p_gpio_hw)
-            .map(NonNull::new)
-            .flatten()
+            .and_then(NonNull::new)
     };
 
     if let Some(pin) = potential_pin {

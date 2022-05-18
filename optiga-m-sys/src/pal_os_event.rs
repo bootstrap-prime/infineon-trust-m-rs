@@ -25,18 +25,20 @@ pub extern "C" fn pal_os_event_destroy(_event: *mut cbindings::pal_os_event_t) {
     }
 }
 
+/// # Safety
+/// callback must be Some function pointer and callback_args must be a pointer to a valid non-null context object.
 #[no_mangle]
-pub extern "C" fn pal_os_event_create(
+pub unsafe extern "C" fn pal_os_event_create(
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
 ) -> *mut cbindings::pal_os_event_t {
-    let event = unsafe { &mut PAL_OS_EVENT_0.unwrap() as *mut cbindings::pal_os_event_t };
+    let event = &mut PAL_OS_EVENT_0.unwrap() as *mut cbindings::pal_os_event_t;
 
-    if !callback.is_none() && !callback_args.is_null() {
+    if callback.is_some() && !callback_args.is_null() {
         pal_os_event_start(event, callback, callback_args);
     }
 
-    return event;
+    event
 }
 
 #[no_mangle]
@@ -50,8 +52,10 @@ pub extern "C" fn pal_os_event_trigger_registered_callback() {
     }
 }
 
+/// # Safety
+/// callback must be Some function pointer, callback_args must be a pointer to a valid non-null context object, and p_pal_os_event must be a valid pointer to an initialized location in memory for storage of the resulting pal_os_event.
 #[no_mangle]
-pub extern "C" fn pal_os_event_register_callback_oneshot(
+pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     p_pal_os_event: *mut cbindings::pal_os_event_t,
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
@@ -59,7 +63,7 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
 ) {
     assert!(!p_pal_os_event.is_null());
 
-    let os_event: &mut cbindings::pal_os_event_t = unsafe { p_pal_os_event.as_mut().unwrap() };
+    let os_event: &mut cbindings::pal_os_event_t = p_pal_os_event.as_mut().unwrap();
 
     os_event.callback_registered = callback;
     os_event.callback_ctx = callback_args;
@@ -81,7 +85,7 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
     let context =
         CallbackCtx(NonNull::new(os_event.callback_ctx).expect("callback context was null"));
 
-    let timer: &mut _ = unsafe { PAL_OS_EVENT_CBACK_TIMER.get_or_insert(Timer::default()) };
+    let timer: &mut _ = PAL_OS_EVENT_CBACK_TIMER.get_or_insert(Timer::default());
 
     #[cfg(not(any(feature = "tester", test)))]
     let current_time = core::time::Duration::from_micros(systick::micros());
@@ -94,19 +98,19 @@ pub extern "C" fn pal_os_event_register_callback_oneshot(
 
     timer.add(deadline, move |_| {
         assert!(callback.is_some());
-        unsafe {
-            context.callfunc(callback);
-        }
+        context.callfunc(callback);
     });
 }
 
+/// # Safety
+/// callback must be Some function pointer and callback_args must be a pointer to a valid non-null context object.
 #[no_mangle]
-pub extern "C" fn pal_os_event_start(
+pub unsafe extern "C" fn pal_os_event_start(
     p_pal_os_event: *mut cbindings::pal_os_event_t,
     callback: cbindings::register_callback,
     callback_args: *mut cty::c_void,
 ) {
-    if let Some(ref mut os_event) = unsafe { p_pal_os_event.as_mut() } {
+    if let Some(ref mut os_event) = p_pal_os_event.as_mut() {
         if os_event.is_event_triggered == false as u8 {
             os_event.is_event_triggered = true as u8;
             pal_os_event_register_callback_oneshot(p_pal_os_event, callback, callback_args, 1000);
@@ -114,9 +118,11 @@ pub extern "C" fn pal_os_event_start(
     }
 }
 
+/// # Safety
+/// p_pal_os_event must be a non-null valid pointer to a pal_os_event that has been triggered.
 #[no_mangle]
-pub extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event_t) {
-    if let Some(ref mut os_event) = unsafe { p_pal_os_event.as_mut() } {
+pub unsafe extern "C" fn pal_os_event_stop(p_pal_os_event: *mut cbindings::pal_os_event_t) {
+    if let Some(ref mut os_event) = p_pal_os_event.as_mut() {
         os_event.is_event_triggered = false as u8;
     }
 }

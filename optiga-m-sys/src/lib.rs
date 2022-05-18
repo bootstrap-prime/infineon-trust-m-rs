@@ -49,8 +49,8 @@ trait OptigaResources {
 
 #[allow(dead_code)]
 enum VDDorRST {
-    PWR = 0,
-    RST = 1,
+    Pwr = 0,
+    Rst = 1,
 }
 
 impl<RSTPin, VCCPin, I2CPin> OptigaResources for OptigaTrustM<RSTPin, VCCPin, I2CPin>
@@ -133,6 +133,9 @@ where
     <I2CPin as Write>::Error: Debug,
     <I2CPin as Read>::Error: Debug,
 {
+    ///# Safety
+    /// users will need to preconfigure the systick timer
+    /// users cannot call this function multiple times, meaning only one instance of this library can exist at a time
     pub unsafe fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
         // user will need to configure the systick timer
         match &OPTIGA_TRUST_M_RESOURCES {

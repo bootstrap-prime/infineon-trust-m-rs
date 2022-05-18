@@ -4,7 +4,7 @@ use std::path::PathBuf;
 fn main() -> anyhow::Result<()> {
     let crate_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?);
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
-    let rustbindings = out_dir.clone().join("rustbindings.h");
+    let rustbindings = out_dir.join("rustbindings.h");
     let target = env::var("TARGET")?;
 
     let bindings = bindgen::Builder::default()
