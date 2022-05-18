@@ -3,14 +3,12 @@
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::ptr::NonNull;
-use num_enum::IntoPrimitive;
 use optiga_m_sys::cbindings::{self, optiga_util_open_application, optiga_util_t};
 use optiga_m_sys::cbindings::{
     hash_data_from_host, hash_data_from_host_t, optiga_crypt_create, optiga_crypt_hash_finalize,
     optiga_crypt_hash_start, optiga_crypt_hash_update, optiga_crypt_t, optiga_hash_context,
     optiga_hash_context_t, optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256, optiga_lib_status_t,
     optiga_util_create, OPTIGA_CRYPT_HOST_DATA, OPTIGA_INSTANCE_ID_0, OPTIGA_LIB_BUSY,
-    OPTIGA_LIB_SUCCESS,
 };
 use optiga_m_sys::pal_os_event::pal_os_event_process;
 
@@ -21,10 +19,10 @@ unsafe extern "C" fn optiga_util_callback(
     _context: *mut c_void,
     return_status: optiga_lib_status_t,
 ) {
-    optiga_lib_status = return_status;
+    OPTIGA_LIB_STATUS = return_status;
 }
 
-static mut optiga_lib_status: optiga_lib_status_t = 0;
+static mut OPTIGA_LIB_STATUS: optiga_lib_status_t = 0;
 
 /// Provides high-level access to the Infineon Optiga Trust M hardware secure element.
 pub struct OptigaM {
@@ -75,6 +73,7 @@ pub enum UtilError {
 }
 
 /// Possible errors returned by the device, defined in <https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes>
+#[allow(dead_code)]
 #[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
 #[repr(u16)]
 pub enum DeviceError {
@@ -219,13 +218,13 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
         OptigaStatus::Success(_) => {
             #[cfg(not(any(test, feature = "tester")))]
             defmt::trace!("processing");
-            while let OptigaStatus::Busy(_) = optiga_lib_status.into() {
+            while let OptigaStatus::Busy(_) = OPTIGA_LIB_STATUS.into() {
                 pal_os_event_process();
             }
             #[cfg(not(any(test, feature = "tester")))]
             defmt::trace!("processed");
 
-            match optiga_lib_status.into() {
+            match OPTIGA_LIB_STATUS.into() {
                 OptigaStatus::Success(_) => {
                     #[cfg(not(any(test, feature = "tester")))]
                     defmt::trace!("returned success");
@@ -257,7 +256,7 @@ unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
 
 fn call_optiga_func<T: FnOnce() -> u16>(returned_process: T) -> Result<(), OptigaStatus> {
     unsafe {
-        optiga_lib_status = OPTIGA_LIB_BUSY as u16;
+        OPTIGA_LIB_STATUS = OPTIGA_LIB_BUSY as u16;
     }
 
     unsafe {
@@ -267,6 +266,7 @@ fn call_optiga_func<T: FnOnce() -> u16>(returned_process: T) -> Result<(), Optig
     Ok(())
 }
 
+#[allow(dead_code)]
 #[repr(u16)]
 enum OID {
     /// Global Life Cycle State
@@ -332,7 +332,7 @@ impl OptigaM {
     unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
         let offset = 0;
 
-        let mut len: u16 = data.len() as u16;
+        let len: u16 = data.len() as u16;
 
         call_optiga_func(|| {
             cbindings::optiga_util_read_data(
@@ -445,30 +445,30 @@ impl OptigaM {
         let mut pal_return_status: u16 = cbindings::PAL_I2C_EVENT_SUCCESS.into();
 
         unsafe {
-            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != optiga_lib_status {
-                optiga_lib_status = cbindings::PAL_I2C_EVENT_BUSY.into();
+            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != OPTIGA_LIB_STATUS {
+                OPTIGA_LIB_STATUS = cbindings::PAL_I2C_EVENT_BUSY.into();
                 pal_return_status = cbindings::pal_i2c_write(
                     &optiga_pal_i2c_context_0,
                     transmit_buffer.as_mut_ptr(),
                     transmit_buffer.len() as u16,
                 );
 
-                if cbindings::PAL_STATUS_FAILURE as u16 == optiga_lib_status {
+                if cbindings::PAL_STATUS_FAILURE as u16 == OPTIGA_LIB_STATUS {
                     break;
                 }
             }
         }
 
         unsafe {
-            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != optiga_lib_status {
-                optiga_lib_status = cbindings::PAL_I2C_EVENT_BUSY.into();
+            while cbindings::PAL_I2C_EVENT_SUCCESS as u16 != OPTIGA_LIB_STATUS {
+                OPTIGA_LIB_STATUS = cbindings::PAL_I2C_EVENT_BUSY.into();
                 pal_return_status = cbindings::pal_i2c_read(
                     &optiga_pal_i2c_context_0,
                     recv_buffer.as_mut_ptr(),
                     recv_buffer.len() as u16,
                 );
 
-                if cbindings::PAL_STATUS_FAILURE as u16 == optiga_lib_status {
+                if cbindings::PAL_STATUS_FAILURE as u16 == OPTIGA_LIB_STATUS {
                     break;
                 }
             }
@@ -523,6 +523,8 @@ use core::pin::Pin;
 
 pub struct OptigaSha256<'a> {
     periph: &'a mut OptigaM,
+    #[allow(dead_code)]
+    // this context object must exist and be valid for the attached c library
     hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>>,
     hash_context: optiga_hash_context,
 }
@@ -541,7 +543,7 @@ impl<'a> OptigaSha256<'a> {
             }
         };
 
-        use core::ptr::{addr_of, addr_of_mut};
+        use core::ptr::addr_of_mut;
 
         // start hashing operation
         call_optiga_func(|| unsafe {
@@ -685,12 +687,12 @@ mod tests {
             i2c::Transaction as I2CTransaction, pin::Transaction as PinTransaction,
         };
 
-        let mut rstpin = PinMock::new(&[
+        let rstpin = PinMock::new(&[
             PinTransaction::set(State::Low),
             PinTransaction::set(State::High),
         ]);
-        let mut vccpin = PinMock::new(&[]);
-        let mut i2cpin = I2CMock::new(&[
+        let vccpin = PinMock::new(&[]);
+        let i2cpin = I2CMock::new(&[
             I2CTransaction::write(48, vec![132]),
             I2CTransaction::read(48, vec![0, 0, 1, 144]),
             I2CTransaction::write(48, vec![129, 1, 21]),
