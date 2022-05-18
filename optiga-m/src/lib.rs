@@ -654,13 +654,9 @@ impl rand_core::RngCore for OptigaM {
                 let mut buf: [u8; 8] = [0; 8];
 
                 random_internal(&mut buf)?;
-
-                // self.random_internal(&mut buf)?;
-
                 chunk.copy_from_slice(&buf[..chunk.len()]);
             } else {
                 random_internal(chunk)?;
-                // self.random_internal(chunk)?;
             }
         }
 
