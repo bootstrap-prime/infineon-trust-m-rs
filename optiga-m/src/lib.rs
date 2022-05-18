@@ -1,269 +1,29 @@
 #![cfg_attr(not(test), no_std)]
 
+mod errors;
+mod optiga_hash;
+mod optiga_rand;
+
+use errors::{call_optiga_func, handle_error, optiga_util_callback};
+pub use errors::{CmdError, CommsError, CryptError, DeviceError, OptigaStatus, UtilError};
+pub use optiga_hash::*;
+
 use core::ffi::c_void;
 use core::fmt::Debug;
 use core::ptr::NonNull;
 use optiga_m_sys::cbindings::{self, optiga_util_open_application, optiga_util_t};
 use optiga_m_sys::cbindings::{
-    hash_data_from_host, hash_data_from_host_t, optiga_crypt_create, optiga_crypt_hash_finalize,
-    optiga_crypt_hash_start, optiga_crypt_hash_update, optiga_crypt_t, optiga_hash_context,
-    optiga_hash_context_t, optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256, optiga_lib_status_t,
-    optiga_util_create, OPTIGA_CRYPT_HOST_DATA, OPTIGA_INSTANCE_ID_0, OPTIGA_LIB_BUSY,
+    optiga_crypt_create, optiga_crypt_t, optiga_lib_status_t, optiga_util_create,
+    OPTIGA_INSTANCE_ID_0, OPTIGA_LIB_BUSY,
 };
-use optiga_m_sys::pal_os_event::pal_os_event_process;
 
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
-
-unsafe extern "C" fn optiga_util_callback(
-    _context: *mut c_void,
-    return_status: optiga_lib_status_t,
-) {
-    OPTIGA_LIB_STATUS = return_status;
-}
-
-static mut OPTIGA_LIB_STATUS: optiga_lib_status_t = 0;
 
 /// Provides high-level access to the Infineon Optiga Trust M hardware secure element.
 pub struct OptigaM {
     lib_crypt: NonNull<optiga_crypt_t>,
     lib_util: NonNull<optiga_util_t>,
-}
-
-/// Possible errors in commanding the secure element.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum CmdError {
-    Unspecified = cbindings::OPTIGA_CMD_ERROR,
-    InvalidInput = cbindings::OPTIGA_CMD_ERROR_INVALID_INPUT,
-    MemoryInsufficient = cbindings::OPTIGA_CMD_ERROR_MEMORY_INSUFFICIENT,
-}
-
-/// Possible communication errors between the host and the secure element.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum CommsError {
-    Unspecified = cbindings::OPTIGA_COMMS_ERROR,
-    Fatal = cbindings::OPTIGA_COMMS_ERROR_FATAL,
-    Handshake = cbindings::OPTIGA_COMMS_ERROR_HANDSHAKE,
-    InvalidInput = cbindings::OPTIGA_COMMS_ERROR_INVALID_INPUT,
-    MemoryInsufficient = cbindings::OPTIGA_COMMS_ERROR_MEMORY_INSUFFICIENT,
-    SessionError = cbindings::OPTIGA_COMMS_ERROR_SESSION,
-    StackMemory = cbindings::OPTIGA_COMMS_ERROR_STACK_MEMORY,
-}
-
-/// Possible errors that can occur when performing cryptography code.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum CryptError {
-    Unspecified = cbindings::OPTIGA_CRYPT_ERROR,
-    InstanceInUse = cbindings::OPTIGA_CRYPT_ERROR_INSTANCE_IN_USE,
-    InvalidInput = cbindings::OPTIGA_CRYPT_ERROR_INVALID_INPUT,
-    MemoryInsufficient = cbindings::OPTIGA_CRYPT_ERROR_MEMORY_INSUFFICIENT,
-}
-
-/// Possible pure library error codes returned by the internally bound optiga-trust-m host library.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum UtilError {
-    Unspecified = cbindings::OPTIGA_UTIL_ERROR,
-    InstanceInUse = cbindings::OPTIGA_UTIL_ERROR_INSTANCE_IN_USE,
-    InvalidInput = cbindings::OPTIGA_UTIL_ERROR_INVALID_INPUT,
-    MemoryInsufficient = cbindings::OPTIGA_UTIL_ERROR_MEMORY_INSUFFICIENT,
-}
-
-/// Possible errors returned by the device, defined in <https://github.com/Infineon/optiga-trust-m/wiki/Device-Error-Codes>
-#[allow(dead_code)]
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum DeviceError {
-    ///Invalid OID
-    InvalidOID = 0x8001,
-    ///Invalid Password
-    InvalidPassword = 0x8002,
-    ///Invalid Param field in command
-    InvalidParamField = 0x8003,
-    ///Invalid Length field in command
-    InvalidLenField = 0x8004,
-    ///Invalid parameter in command data field
-    InvalidParameterInCmdDataField = 0x8005,
-    ///Internal process error
-    InternalProcessError = 0x8006,
-    ///Access conditions are not satisfied
-    AccessConditionsNotSatisfied = 0x8007,
-    ///The sum of offset and data provided (offset + data length) exceeds the max length of the data object
-    DataObjectBoundaryExceeded = 0x8008,
-    ///Metadata truncation error
-    MetadataTruncationError = 0x8009,
-    ///Invalid command field
-    InvalidCmdField = 0x800A,
-    ///Command or message out of sequence.
-    /// Command out of sequence means that the command which expected to use certain resources are not available or not started at chip
-    /// e.g. invoking the optiga_crypt_tls_prf_sha256() function (which is using session) before invoking the optiga_crypt_ecdh() function.
-    /// Another example is a usage of the optiga_crypt_ecdh() and optiga_crypt_tls_prf_sha256() functions in the row using the Session OID
-    /// without optiga_crypt_ecc_generate_keypair(), this leads to failure "of out of sequence" due to a lack of private key in Session OID slot
-    CmdOutOfSequence = 0x800B,
-    ///due to termination state of the application or due to Application closed
-    CmdNotAvailable = 0x800C,
-    ///Insufficient memory to process the command APDU
-    InsufficientMemoryBuffer = 0x800D,
-    ///Counter value crossed the threshold limit and further counting is denied.
-    CounterThresholdLimitExceeded = 0x800E,
-    ///The Manifest version provided is not supported or the Payload Version in Manifest has MSB set (Invalid Flag=1).
-    /// Invalid or un-supported manifest values or formats including CBOR parsing errors.
-    InvalidManifest = 0x800F,
-    ///The Payload Version provided in the Manifest is not greater than the version of the target object
-    /// or the last update was interrupted and the restarted/retried update has not the same version
-    InvalidOrWrongPayloadVersion = 0x8010,
-    ///Illegal parameters in (D)TLS Handshake message, either in header or data.
-    InvalidHandshakeMessage = 0x8021,
-    ///Protocol or data structure version mismatch (e.g. X.509 Version, ...).
-    VersionMismatch = 0x8022,
-    ///Cipher suite mismatch between client and server.
-    InsufficientOrUnsupportedCipherSuite = 0x8023,
-    ///An unsupported extension found in the message. Unsupported keyusage/Algorithm extension/identifier for the usage of Private key
-    UnsupportedExtensionOrIdentifier = 0x8024,
-    ///The Trust Anchor is either not loaded or the loaded Trust Anchor is invalid e.g. not well formed X.509 certificate, public key missing, ...).
-    InvalidTrustAnchor = 0x8026,
-    ///The Trust Anchor loaded at OPTIGA Trust is expired.
-    TrustAnchorExpired = 0x8027,
-    ///The cryptographic algorithms specified in Trust Anchor loaded are not supported by OPTIGA Trust.
-    UnsupportedTrustAnchor = 0x8028,
-    ///Invalid certificate(s) in certificate message with the following reasons.
-    InvalidCertificateFormat = 0x8029,
-    ///At least one cryptographic algorithm specified in the certificate is not supported (e.g. hash or sign algorithms).
-    UnsupportedCertificateAlgorithm = 0x802A,
-    ///The certificate or at least one certificate in a certificate chain received is expired.
-    CertificateExpired = 0x802B,
-    ///Signature verification failure.
-    SignatureVerificationFailure = 0x802C,
-    ///Message Integrity validation failure (e.g. during CCM decryption).
-    IntegrityValidationFailure = 0x802D,
-    ///Decryption Failure.
-    DecryptionFailure = 0x802E,
-}
-
-/// Possible busy codes returned by the internally bound optiga-trust-m host library.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum Busy {
-    Busy = cbindings::OPTIGA_CRYPT_BUSY as u16,
-}
-
-/// Possible success codes returned by the internally bound optiga-trust-m host library.
-#[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, Debug)]
-#[repr(u16)]
-pub enum Successes {
-    Cmd = cbindings::OPTIGA_CMD_SUCCESS as u16,
-    // despite the name, apparently this macro by itself is a success
-    Device = cbindings::OPTIGA_DEVICE_ERROR as u16,
-}
-
-/// All possible errors that can be returned by this crate.
-#[derive(Debug)]
-#[repr(u16)]
-pub enum OptigaStatus {
-    Unknown(u16),
-    Busy(Busy),
-    CmdError(CmdError),
-    CommsError(CommsError),
-    CryptError(CryptError),
-    UtilError(UtilError),
-    DeviceError(DeviceError),
-    Success(Successes),
-}
-
-impl From<OptigaStatus> for u16 {
-    fn from(error: OptigaStatus) -> u16 {
-        use OptigaStatus::*;
-
-        match error {
-            Unknown(e) => e,
-            Busy(e) => e.into(),
-            CmdError(e) => e.into(),
-            CommsError(e) => e.into(),
-            CryptError(e) => e.into(),
-            UtilError(e) => e.into(),
-            DeviceError(e) => e.into(),
-            Success(e) => e.into(),
-        }
-    }
-}
-
-impl From<u16> for OptigaStatus {
-    fn from(numeric_error: u16) -> OptigaStatus {
-        use OptigaStatus::*;
-        if let Ok(e) = numeric_error.try_into() {
-            Busy(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            Success(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CmdError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CommsError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            CryptError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            UtilError(e)
-        } else if let Ok(e) = numeric_error.try_into() {
-            DeviceError(e)
-        } else {
-            Unknown(numeric_error)
-        }
-    }
-}
-
-unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
-    match returned_status.into() {
-        OptigaStatus::Success(_) => {
-            #[cfg(not(any(test, feature = "tester")))]
-            defmt::trace!("processing");
-            while let OptigaStatus::Busy(_) = OPTIGA_LIB_STATUS.into() {
-                pal_os_event_process();
-            }
-            #[cfg(not(any(test, feature = "tester")))]
-            defmt::trace!("processed");
-
-            match OPTIGA_LIB_STATUS.into() {
-                OptigaStatus::Success(_) => {
-                    #[cfg(not(any(test, feature = "tester")))]
-                    defmt::trace!("returned success");
-                    Ok(())
-                }
-                e => {
-                    extern crate alloc;
-                    #[cfg(not(any(test, feature = "tester")))]
-                    defmt::trace!(
-                        "did not return success, err {}",
-                        alloc::format!("{:?}", e).as_str()
-                    );
-
-                    Err(e)
-                }
-            }
-        }
-        e => {
-            extern crate alloc;
-            #[cfg(not(any(test, feature = "tester")))]
-            defmt::trace!(
-                "did not return success, err {}",
-                alloc::format!("{:?}", e).as_str()
-            );
-            Err(e)
-        }
-    }
-}
-
-fn call_optiga_func<T: FnOnce() -> u16>(returned_process: T) -> Result<(), OptigaStatus> {
-    unsafe {
-        OPTIGA_LIB_STATUS = OPTIGA_LIB_BUSY as u16;
-    }
-
-    unsafe {
-        handle_error(returned_process())?;
-    }
-
-    Ok(())
 }
 
 #[allow(dead_code)]
@@ -310,10 +70,7 @@ enum OID {
 }
 
 impl OptigaM {
-    // maybe I need to set a current limit.
-    // https://github.com/Infineon/arduino-optiga-trust-m/blob/24dff4647e75b8334b5a9a4daad6b28ca36d06eb/src/OPTIGATrustM.h#L276=
-    // https://github.com/Infineon/arduino-optiga-trust-m/blob/master/examples/calculateHash/calculateHash.ino
-
+    /// Set an OID to a byte slice..
     unsafe fn set_generic_data(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
         let offset = 0;
 
@@ -329,6 +86,7 @@ impl OptigaM {
         })
     }
 
+    /// Get the value as a byteslice of an OID.
     unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
         let offset = 0;
 
@@ -432,6 +190,8 @@ impl OptigaM {
 
     /// Test that the i2c communication with the SE is functioning properly.
     pub fn test_optiga_communication(&mut self) -> Result<(), OptigaStatus> {
+        use errors::OPTIGA_LIB_STATUS;
+
         let mut transmit_buffer: [u8; 1] = [0x82];
         let mut recv_buffer: [u8; 4] = [0; 4];
 
@@ -477,194 +237,10 @@ impl OptigaM {
         unsafe { handle_error(pal_return_status) }
     }
 
-
-
-
-
-
-
-    // pub fn sha256(&mut self, bits_to_hash: &[u8]) -> Result<[u8; 32], OptigaStatus> {
-    //     use core::ptr::{addr_of, addr_of_mut};
-
-    //     #[cfg(not(test))]
-    //     defmt::trace!("starting hash");
-
-    //     Ok(digest)
     // }
+
+
 }
-
-impl From<OptigaStatus> for rand_core::Error {
-    fn from(error: OptigaStatus) -> rand_core::Error {
-        TryInto::<core::num::NonZeroU32>::try_into(Into::<u16>::into(error) as u32)
-            .unwrap()
-            .into()
-    }
-}
-
-impl From<rand_core::Error> for OptigaStatus {
-    fn from(error: rand_core::Error) -> OptigaStatus {
-        let error: u16 = error.code().and_then(|e| e.get().try_into().ok()).unwrap();
-
-        error.into()
-    }
-}
-
-const OPTIGA_SHA256_CONTEXT_LENGTH: usize =
-    cbindings::optiga_hash_context_length_OPTIGA_HASH_CONTEXT_LENGTH_SHA_256 as usize;
-
-extern crate alloc;
-
-use alloc::boxed::Box;
-use core::pin::Pin;
-
-pub struct OptigaSha256<'a> {
-    periph: &'a mut OptigaM,
-    #[allow(dead_code)]
-    // this context object must exist and be valid for the attached c library
-    hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>>,
-    hash_context: optiga_hash_context,
-}
-
-impl<'a> OptigaSha256<'a> {
-    pub fn new(periph: &'a mut OptigaM) -> Self {
-        // initialize hash context
-        let mut hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>> =
-            Box::pin([0; OPTIGA_SHA256_CONTEXT_LENGTH]);
-
-        let mut hash_context: optiga_hash_context_t = {
-            optiga_hash_context {
-                context_buffer: hash_context_buffer.as_mut_ptr(),
-                context_buffer_length: hash_context_buffer.len() as u16,
-                hash_algo: optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u8,
-            }
-        };
-
-        use core::ptr::addr_of_mut;
-
-        // start hashing operation
-        call_optiga_func(|| unsafe {
-            optiga_crypt_hash_start(periph.lib_crypt.as_ptr(), addr_of_mut!(hash_context))
-        })
-        .unwrap();
-
-        OptigaSha256 {
-            periph,
-            hash_context,
-            hash_context_buffer,
-        }
-    }
-}
-
-impl<'a> digest::DynDigest for OptigaSha256<'a> {
-    fn update(&mut self, data: &[u8]) {
-        use core::ptr::{addr_of, addr_of_mut};
-
-        let hash_data_host: hash_data_from_host_t = hash_data_from_host {
-            buffer: data.as_ptr(),
-            length: data.len() as u32,
-        };
-
-        call_optiga_func(|| unsafe {
-            optiga_crypt_hash_update(
-                self.periph.lib_crypt.as_ptr(),
-                addr_of_mut!(self.hash_context),
-                OPTIGA_CRYPT_HOST_DATA as u8,
-                addr_of!(hash_data_host) as *const c_void,
-            )
-        })
-        .unwrap();
-    }
-
-    fn finalize_into(mut self, digest: &mut [u8]) -> Result<(), digest::InvalidBufferSize> {
-        self.finalize_into_reset(digest)
-    }
-
-    fn finalize_into_reset(&mut self, digest: &mut [u8]) -> Result<(), digest::InvalidBufferSize> {
-        use core::ptr::addr_of_mut;
-
-        if digest.len() == 32 {
-            call_optiga_func(|| unsafe {
-                optiga_crypt_hash_finalize(
-                    self.periph.lib_crypt.as_ptr(),
-                    addr_of_mut!(self.hash_context),
-                    digest.as_mut_ptr(),
-                )
-            })
-            .unwrap();
-
-            Ok(())
-        } else {
-            Err(digest::InvalidBufferSize)
-        }
-    }
-
-    fn reset(&mut self) {
-        let mut digest: [u8; 32] = [0; 32];
-
-        self.finalize_into_reset(&mut digest).unwrap();
-    }
-
-    fn output_size(&self) -> usize {
-        32
-    }
-}
-
-impl<'a> digest::HashMarker for OptigaSha256<'a> {}
-
-pub use digest::DynDigest;
-
-/// Get random slice of bytes from the device's TRNG.
-/// The device's TRNG generates random numbers in blocks of 8 to 256 bytes - if an input buffer exceeds this, the hardware is called multiple times to fill it.
-/// If an input buffer is less than the minimum length (8 bytes), the hardware will call the minimum length and discard unused bytes.
-/// This device is not in the CPU- ideally, this should be used directly only by those that absolutely need a CSTRNG, or to seed a PRNG.
-/// Due to constraints on std::error (specifically, there being no core::error), rand_core makes you output numerical error codes. A convenience implementation of From<rand_core::Error> for OptigaStatus has been provided.
-impl rand_core::RngCore for OptigaM {
-    fn next_u32(&mut self) -> u32 {
-        rand_core::impls::next_u32_via_fill(self)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        rand_core::impls::next_u64_via_fill(self)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.try_fill_bytes(dest).unwrap();
-    }
-
-    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error> {
-        // there is a valid range of bytes you can request, 8 to 256. any higher or lower, the device will get mad at you.
-        // rust doesn't provide a mechanism to limit the size of a byte, and I don't want to add a new error code, so it should handle arbitrary slice sizes
-
-        // FnMut(&mut [u8]) -> Result<(), OptigaStatus>, interface to internal cbindings optiga call
-        let random_internal = |buf_chunk: &mut [u8]| {
-            call_optiga_func(|| unsafe {
-                cbindings::optiga_crypt_random(
-                    self.lib_crypt.as_ptr(),
-                    cbindings::optiga_rng_type_OPTIGA_RNG_TYPE_TRNG,
-                    buf_chunk.as_mut_ptr(),
-                    buf_chunk.len().try_into().unwrap(),
-                )
-            })
-        };
-
-        // chunk the slice into the maximum length for the slice per call to the device.
-        for chunk in bytes.chunks_mut(256) {
-            if chunk.len() < 8 {
-                // if the size is less than the minimum allowed length, request the minimum length and discard unused bytes.
-                let mut buf: [u8; 8] = [0; 8];
-
-                random_internal(&mut buf)?;
-                chunk.copy_from_slice(&buf[..chunk.len()]);
-            } else {
-                random_internal(chunk)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl rand_core::CryptoRng for OptigaM {}
 
 #[cfg(test)]
 mod tests {
