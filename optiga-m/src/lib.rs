@@ -13,8 +13,7 @@ use core::fmt::Debug;
 use core::ptr::NonNull;
 use optiga_m_sys::cbindings::{self, optiga_util_open_application, optiga_util_t};
 use optiga_m_sys::cbindings::{
-    optiga_crypt_create, optiga_crypt_t, optiga_lib_status_t, optiga_util_create,
-    OPTIGA_INSTANCE_ID_0, OPTIGA_LIB_BUSY,
+    optiga_lib_status_t, optiga_util_create, OPTIGA_INSTANCE_ID_0, OPTIGA_LIB_BUSY,
 };
 
 use embedded_hal::blocking::i2c::{Read, Write};
@@ -22,7 +21,6 @@ use embedded_hal::digital::v2::OutputPin;
 
 /// Provides high-level access to the Infineon Optiga Trust M hardware secure element.
 pub struct OptigaM {
-    lib_crypt: NonNull<optiga_crypt_t>,
     lib_util: NonNull<optiga_util_t>,
 }
 
@@ -67,6 +65,47 @@ enum OID {
     SecurityStatusA = 0xF1C1,
     /// Error codes
     ErrorCodes = 0xF1C2,
+}
+
+/// Create a crypt instance for use between operations.
+fn crypt_create() -> NonNull<cbindings::optiga_crypt> {
+    unsafe {
+        NonNull::new(cbindings::optiga_crypt_create(
+            cbindings::OPTIGA_INSTANCE_ID_0 as u8,
+            Some(crate::optiga_util_callback),
+            core::ptr::null_mut(),
+        ))
+        .expect("optiga_crypt_create() returned a null pointer")
+    }
+}
+
+/// Destroy a crypt instance for use between operations.
+fn crypt_destroy(lib_crypt: NonNull<cbindings::optiga_crypt>) {
+    unsafe {
+        let result: OptigaStatus = cbindings::optiga_crypt_destroy(lib_crypt.as_ptr()).into();
+        match result {
+            OptigaStatus::Success(_) => Ok(()),
+            e => Err(e),
+        }
+        .unwrap();
+    }
+}
+
+impl Drop for OptigaM {
+    fn drop(&mut self) {
+        call_optiga_func(|| unsafe {
+            cbindings::optiga_util_close_application(self.lib_util.as_ptr(), 1)
+        })
+        .unwrap();
+
+        let result = unsafe { cbindings::optiga_util_destroy(self.lib_util.as_ptr()) };
+
+        match result.into() {
+            OptigaStatus::Success(_) => Ok(()),
+            e => Err(e),
+        }
+        .unwrap()
+    }
 }
 
 impl OptigaM {
@@ -170,22 +209,10 @@ impl OptigaM {
             lib_util
         };
 
-        let lib_crypt = unsafe {
-            NonNull::new(optiga_crypt_create(
-                OPTIGA_INSTANCE_ID_0 as u8,
-                Some(optiga_util_callback),
-                core::ptr::null_mut(),
-            ))
-            .expect("optiga_crypt_create() returned a null pointer")
-        };
-
         call_optiga_func(|| unsafe { optiga_util_open_application(lib_util.as_ptr(), 0) })
             .expect("was unable to initialize utility");
 
-        OptigaM {
-            lib_util,
-            lib_crypt,
-        }
+        OptigaM { lib_util }
     }
 
     /// Test that the i2c communication with the SE is functioning properly.

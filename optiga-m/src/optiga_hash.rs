@@ -11,6 +11,8 @@ use core::ffi::c_void;
 
 pub use digest::DynDigest;
 
+use core::ptr::NonNull;
+
 const OPTIGA_SHA256_CONTEXT_LENGTH: usize =
     cbindings::optiga_hash_context_length_OPTIGA_HASH_CONTEXT_LENGTH_SHA_256 as usize;
 
@@ -21,6 +23,7 @@ pub struct OptigaSha256<'a> {
     // this context object must exist and be valid for the attached c library
     hash_context_buffer: Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>,
     hash_context: optiga_hash_context,
+    lib_crypt: NonNull<cbindings::optiga_crypt_t>,
 }
 
 impl<'a> OptigaSha256<'a> {
@@ -35,9 +38,11 @@ impl<'a> OptigaSha256<'a> {
             hash_algo: optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u8,
         };
 
+        let lib_crypt = crate::crypt_create();
+
         // start hashing operation
         call_optiga_func(|| unsafe {
-            cbindings::optiga_crypt_hash_start(periph.lib_crypt.as_ptr(), &mut hash_context)
+            cbindings::optiga_crypt_hash_start(lib_crypt.as_ptr(), &mut hash_context)
         })
         .unwrap();
 
@@ -45,7 +50,14 @@ impl<'a> OptigaSha256<'a> {
             periph,
             hash_context,
             hash_context_buffer,
+            lib_crypt,
         }
+    }
+}
+
+impl<'a> Drop for OptigaSha256<'a> {
+    fn drop(&mut self) {
+        crate::crypt_destroy(self.lib_crypt);
     }
 }
 
@@ -60,7 +72,7 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
 
         call_optiga_func(|| unsafe {
             cbindings::optiga_crypt_hash_update(
-                self.periph.lib_crypt.as_ptr(),
+                self.lib_crypt.as_ptr(),
                 &mut self.hash_context,
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 addr_of!(hash_data_host) as *const c_void,
@@ -77,7 +89,7 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
         if digest.len() == 32 {
             call_optiga_func(|| unsafe {
                 cbindings::optiga_crypt_hash_finalize(
-                    self.periph.lib_crypt.as_ptr(),
+                    self.lib_crypt.as_ptr(),
                     &mut self.hash_context,
                     digest.as_mut_ptr(),
                 )

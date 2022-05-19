@@ -27,14 +27,20 @@ impl rand_core::RngCore for OptigaM {
 
         // FnMut(&mut [u8]) -> Result<(), OptigaStatus>, interface to internal cbindings optiga call
         let random_internal = |buf_chunk: &mut [u8]| {
-            call_optiga_func(|| unsafe {
+            let lib_crypt = crate::crypt_create();
+
+            let result = call_optiga_func(|| unsafe {
                 cbindings::optiga_crypt_random(
-                    self.lib_crypt.as_ptr(),
+                    lib_crypt.as_ptr(),
                     cbindings::optiga_rng_type_OPTIGA_RNG_TYPE_TRNG,
                     buf_chunk.as_mut_ptr(),
                     buf_chunk.len().try_into().unwrap(),
                 )
-            })
+            });
+
+            crate::crypt_destroy(lib_crypt);
+
+            result
         };
 
         // chunk the slice into the maximum length for the slice per call to the device.
