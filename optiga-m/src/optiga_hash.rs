@@ -8,7 +8,6 @@ use crate::cbindings::{
 use crate::OptigaM;
 use alloc::boxed::Box;
 use core::ffi::c_void;
-use core::pin::Pin;
 
 pub use digest::DynDigest;
 
@@ -20,24 +19,21 @@ pub struct OptigaSha256<'a> {
     periph: &'a mut OptigaM,
     #[allow(dead_code)]
     // this context object must exist and be valid for the attached c library
-    hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>>,
+    hash_context_buffer: Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>,
     hash_context: optiga_hash_context,
 }
 
 impl<'a> OptigaSha256<'a> {
     pub fn new(periph: &'a mut OptigaM) -> Self {
         // initialize hash context
-        let mut hash_context_buffer: Pin<Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]>> =
-            Box::pin([0; OPTIGA_SHA256_CONTEXT_LENGTH]);
+        let mut hash_context_buffer: Box<[u8; OPTIGA_SHA256_CONTEXT_LENGTH]> =
+            Box::new([0; OPTIGA_SHA256_CONTEXT_LENGTH]);
 
-        let mut hash_context: optiga_hash_context_t = {
-            optiga_hash_context {
-                context_buffer: hash_context_buffer.as_mut_ptr(),
-                context_buffer_length: hash_context_buffer.len() as u16,
-                hash_algo: optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u8,
-            }
+        let mut hash_context = optiga_hash_context {
+            context_buffer: hash_context_buffer.as_mut_ptr(),
+            context_buffer_length: hash_context_buffer.len() as u16,
+            hash_algo: optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256 as u8,
         };
-
 
         // start hashing operation
         call_optiga_func(|| unsafe {
