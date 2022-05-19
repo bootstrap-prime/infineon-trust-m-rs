@@ -38,14 +38,10 @@ impl<'a> OptigaSha256<'a> {
             }
         };
 
-        use core::ptr::addr_of_mut;
 
         // start hashing operation
         call_optiga_func(|| unsafe {
-            cbindings::optiga_crypt_hash_start(
-                periph.lib_crypt.as_ptr(),
-                addr_of_mut!(hash_context),
-            )
+            cbindings::optiga_crypt_hash_start(periph.lib_crypt.as_ptr(), &mut hash_context)
         })
         .unwrap();
 
@@ -59,7 +55,7 @@ impl<'a> OptigaSha256<'a> {
 
 impl<'a> digest::DynDigest for OptigaSha256<'a> {
     fn update(&mut self, data: &[u8]) {
-        use core::ptr::{addr_of, addr_of_mut};
+        use core::ptr::addr_of;
 
         let hash_data_host: hash_data_from_host_t = hash_data_from_host {
             buffer: data.as_ptr(),
@@ -69,7 +65,7 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
         call_optiga_func(|| unsafe {
             cbindings::optiga_crypt_hash_update(
                 self.periph.lib_crypt.as_ptr(),
-                addr_of_mut!(self.hash_context),
+                &mut self.hash_context,
                 OPTIGA_CRYPT_HOST_DATA as u8,
                 addr_of!(hash_data_host) as *const c_void,
             )
@@ -82,13 +78,11 @@ impl<'a> digest::DynDigest for OptigaSha256<'a> {
     }
 
     fn finalize_into_reset(&mut self, digest: &mut [u8]) -> Result<(), digest::InvalidBufferSize> {
-        use core::ptr::addr_of_mut;
-
         if digest.len() == 32 {
             call_optiga_func(|| unsafe {
                 cbindings::optiga_crypt_hash_finalize(
                     self.periph.lib_crypt.as_ptr(),
-                    addr_of_mut!(self.hash_context),
+                    &mut self.hash_context,
                     digest.as_mut_ptr(),
                 )
             })
