@@ -26,22 +26,21 @@ impl rand_core::RngCore for OptigaM {
         // rust doesn't provide a mechanism to limit the size of a byte, and I don't want to add a new error code, so it should handle arbitrary slice sizes
 
         // FnMut(&mut [u8]) -> Result<(), OptigaStatus>, interface to internal cbindings optiga call
-        let random_internal = |buf_chunk: &mut [u8]| {
-            let lib_crypt = crate::crypt_create();
+        let random_internal =
+            |buf_chunk: &mut [u8], lib_crypt: core::ptr::NonNull<cbindings::optiga_crypt>| {
+                let result = call_optiga_func(|| unsafe {
+                    cbindings::optiga_crypt_random(
+                        lib_crypt.as_ptr(),
+                        cbindings::optiga_rng_type_OPTIGA_RNG_TYPE_TRNG,
+                        buf_chunk.as_mut_ptr(),
+                        buf_chunk.len().try_into().unwrap(),
+                    )
+                });
 
-            let result = call_optiga_func(|| unsafe {
-                cbindings::optiga_crypt_random(
-                    lib_crypt.as_ptr(),
-                    cbindings::optiga_rng_type_OPTIGA_RNG_TYPE_TRNG,
-                    buf_chunk.as_mut_ptr(),
-                    buf_chunk.len().try_into().unwrap(),
-                )
-            });
+                result
+            };
 
-            crate::crypt_destroy(lib_crypt);
-
-            result
-        };
+        let lib_crypt = crate::crypt_create();
 
         // chunk the slice into the maximum length for the slice per call to the device.
         for chunk in bytes.chunks_mut(256) {
@@ -49,12 +48,14 @@ impl rand_core::RngCore for OptigaM {
                 // if the size is less than the minimum allowed length, request the minimum length and discard unused bytes.
                 let mut buf: [u8; 8] = [0; 8];
 
-                random_internal(&mut buf)?;
+                random_internal(&mut buf, lib_crypt)?;
                 chunk.copy_from_slice(&buf[..chunk.len()]);
             } else {
-                random_internal(chunk)?;
+                random_internal(chunk, lib_crypt)?;
             }
         }
+
+        crate::crypt_destroy(lib_crypt);
 
         Ok(())
     }
