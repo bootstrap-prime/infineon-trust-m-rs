@@ -4,6 +4,3 @@
 [submodule "optiga-m-sys/printf"]
 	path = optiga-m-sys/printf
 	url = https://github.com/mpaland/printf
-[submodule "optiga-m-sys/newlib-cygwin"]
-	path = optiga-m-sys/newlib-cygwin
-	url = git://sourceware.org:/git/newlib-cygwin.git

@@ -39,7 +39,7 @@ char *__stpcpy(char *restrict d, const char *restrict s)
 	return d;
 }
 
-/* weak_alias(__stpcpy, stpcpy); */
+weak_alias(__stpcpy, stpcpy);
 
 char *__stpcpy(char *, const char *);
 
