@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
         .header("optiga-trust-m/optiga/include/optiga/optiga_crypt.h")
         .header("optiga-trust-m/optiga/include/optiga/pal/pal_logger.h")
         .header("optiga-trust-m/optiga/include/optiga/pal/pal_gpio.h")
+        .clang_arg("-Inewlib-cygwin/newlib/libc/include/")
         .clang_arg(format!("--target={}", target))
         .clang_arg("-Ioptiga-trust-m/optiga/include/")
         .detect_include_paths(true)
@@ -70,13 +71,18 @@ fn main() -> anyhow::Result<()> {
         .include("optiga-trust-m/optiga/include/")
         .include("optiga-trust-m/optiga/include/optiga/pal")
         .include("pal/optiga/include/optiga/pal")
+        .include("newlib-cygwin/newlib/libc/include/")
+        .file("newlib-cygwin/newlib/libc/string/strcat.c")
+        .file("newlib-cygwin/newlib/libc/string/strcpy.c")
+        .include(format!("{}/clang/14.0.1/include/", env!("LIBCLANG_PATH")).as_str())
         .include("printf")
         .file("printf/printf.c")
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
         .file("pal/pal_os_datastore.c")
-        .file("pal/pal_string.c")
         .define("OPTIGA_LIB_EXTERNAL", "\"optiga_lib_config_external.h\"")
+        .opt_level(0)
+        // .flag("-O")
         .files(
             walkdir::WalkDir::new("optiga-trust-m/optiga/")
                 .into_iter()
@@ -93,7 +99,8 @@ fn main() -> anyhow::Result<()> {
                         && e.file_name().unwrap() != "pal_crypt_mbedtls.c"
                 }),
         )
-        .compile("optiga-m-sys");
+        .target(format!("{}", target).as_str())
+        .compile("optiga-m-sys.a");
 
     println!("rerun-if-changed=./optiga-trust-m");
 
