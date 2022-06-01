@@ -50,6 +50,8 @@ pub struct Metadata {
     reset_type: ResetType,
 }
 
+enum AccessCondition {}
+
 enum KeyType {
     RSA(RSAKeyTypes),
     ECC(ECCKeyTypes),
