@@ -2,5 +2,6 @@
 resolver = "2"
 members = [
   "optiga-m-sys",
-  "optiga-m"
+  "optiga-m",
+  "testsuite"
 ]

@@ -1,0 +1,32 @@
+[package]
+authors = ["bootstrap-prime <bootstrap.prime@gmail.com>"]
+name = "infineon-tests"
+publish = false
+edition = "2021"
+version = "0.1.0"
+
+[lib]
+harness = false
+
+[[test]]
+name = "test"
+harness = false
+
+[dependencies]
+defmt = "0.3.0"
+defmt-rtt = "0.3.0"
+defmt-test = "0.3.0"
+panic-probe = { version = "0.3.0", features = ["print-defmt"] }
+
+cortex-m = "0.7.3"
+cortex-m-rt = { version = "0.7", features = ["device"] }
+alloc-cortex-m = "0.4"
+stm32f4xx-hal = { version = "0.11.1", features = ["rt", "stm32f411"] }
+embedded-hal = "0.2"
+systick = { git = "https://github.com/sourcebox/cortex-m-systick-rs", package = "cortex-m-systick" }
+
+optiga-m = { path = "../optiga-m" }
+
+sha2 = { version = "0.10.2", default-features = false }
+
+rand_core = "0.6.3"
