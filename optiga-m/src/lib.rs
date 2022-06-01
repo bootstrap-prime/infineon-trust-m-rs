@@ -91,6 +91,9 @@ fn crypt_destroy(lib_crypt: NonNull<cbindings::optiga_crypt>) {
     }
 }
 
+// TODO: write a metadata object based on python-optiga-trust's _parse_raw_meta
+// https://infineon.github.io/python-optiga-trust/metadata.html
+
 impl Drop for OptigaM {
     fn drop(&mut self) {
         call_optiga_func(|| unsafe {
@@ -109,6 +112,46 @@ impl Drop for OptigaM {
 }
 
 impl OptigaM {
+    /// Set an OID's metadata to a byteslice
+    unsafe fn set_metadata(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
+        let len: u8 = data
+            .len()
+            .try_into()
+            .expect("metadata was too long, length must be able to fit into a u8");
+
+        call_optiga_func(|| {
+            cbindings::optiga_util_write_metadata(
+                self.lib_util.as_ptr(),
+                oid as u16,
+                data.as_ptr(),
+                len,
+            )
+        })?;
+
+        assert!(usize::from(len) <= data.len());
+
+        Ok(())
+    }
+
+    /// Read the metadata of an OID and write to the provided byteslice. returns the number of bytes in the provided byteslice used.
+    unsafe fn get_metadata(&mut self, oid: OID, data: &mut [u8]) -> Result<usize, OptigaStatus> {
+        let mut len: u16 = data.len() as u16;
+
+        call_optiga_func(|| {
+            cbindings::optiga_util_read_metadata(
+                self.lib_util.as_ptr(),
+                oid as u16,
+                data.as_mut_ptr(),
+                &mut len,
+            )
+        })?;
+
+        assert!(usize::from(len) <= data.len());
+        assert_ne!(len, 0);
+
+        Ok(usize::from(len))
+    }
+
     /// Set an OID to a byte slice..
     unsafe fn set_generic_data(
         &mut self,
