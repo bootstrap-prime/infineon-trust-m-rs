@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
         .clang_arg(format!("--target={}", target))
         .clang_arg("-Ioptiga-trust-m/optiga/include/")
         .detect_include_paths(true)
-        .layout_tests(false)
+        .layout_tests(true)
         .use_core()
         .ctypes_prefix("cty")
         .rustfmt_bindings(true)
