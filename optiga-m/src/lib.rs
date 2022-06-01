@@ -3,10 +3,12 @@
 mod errors;
 mod optiga_hash;
 mod optiga_rand;
+mod optiga_sign;
 
 use errors::{call_optiga_func, handle_error, optiga_util_callback};
 pub use errors::{CmdError, CommsError, CryptError, DeviceError, OptigaStatus, UtilError};
 pub use optiga_hash::*;
+pub use optiga_sign::*;
 
 use core::ffi::c_void;
 use core::fmt::Debug;
