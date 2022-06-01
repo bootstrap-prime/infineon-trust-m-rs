@@ -239,6 +239,7 @@ pub fn call_optiga_func<T: FnOnce() -> u16>(returned_process: T) -> Result<(), O
     Ok(())
 }
 
+#[no_mangle]
 pub unsafe extern "C" fn optiga_util_callback(
     _context: *mut c_void,
     return_status: optiga_lib_status_t,
