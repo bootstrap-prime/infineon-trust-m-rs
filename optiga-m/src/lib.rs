@@ -330,9 +330,15 @@ impl OptigaM {
         unsafe { handle_error(pal_return_status) }
     }
 
+    // pub fn check_chip() -> Result<bool, OptigaStatus> {
+    //     Ok(false)
     // }
 
+    // pub fn reset() -> Result<(), OptigaStatus> {
+    //     Ok(())
+    // }
 
+    // pub fn get_last_error_code() -> Result<(), OptigaStatus> {}
 }
 
 #[cfg(test)]
