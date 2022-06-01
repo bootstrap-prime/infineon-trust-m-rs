@@ -110,8 +110,18 @@ impl Drop for OptigaM {
 
 impl OptigaM {
     /// Set an OID to a byte slice..
-    unsafe fn set_generic_data(&mut self, oid: OID, data: &[u8]) -> Result<(), OptigaStatus> {
-        let offset = 0;
+    unsafe fn set_generic_data(
+        &mut self,
+        oid: OID,
+        data: &[u8],
+        offset: Option<u16>,
+    ) -> Result<(), OptigaStatus> {
+        let len: u16 = data.len().try_into().expect("metadata was too long");
+
+        assert!(len < 1700);
+
+        let offset = offset.unwrap_or(0);
+        assert!(offset < 1700);
 
         call_optiga_func(|| {
             cbindings::optiga_util_write_data(
@@ -120,16 +130,22 @@ impl OptigaM {
                 cbindings::OPTIGA_UTIL_ERASE_AND_WRITE as u8,
                 offset,
                 data.as_ptr(),
-                data.len() as u16,
+                len,
             )
         })
     }
 
-    /// Get the value as a byteslice of an OID.
-    unsafe fn get_generic_data(&mut self, oid: OID, data: &mut [u8]) -> Result<(), OptigaStatus> {
-        let offset = 0;
-
-        let len: u16 = data.len() as u16;
+    /// Read the data of an OID and write to the provided byteslice. returns the number of bytes used.
+    unsafe fn get_generic_data(
+        &mut self,
+        oid: OID,
+        data: &mut [u8],
+        offset: Option<u16>,
+    ) -> Result<usize, OptigaStatus> {
+        let mut len: u16 = data.len() as u16;
+        assert!(data.len() < 1700);
+        let offset = offset.unwrap_or(0);
+        assert!(offset < 1700);
 
         call_optiga_func(|| {
             cbindings::optiga_util_read_data(
@@ -137,20 +153,21 @@ impl OptigaM {
                 oid as u16,
                 offset,
                 data.as_mut_ptr(),
-                len as *mut u16,
+                &mut len,
             )
         })?;
 
-        assert!(len == data.len() as u16);
+        assert!(usize::from(len) <= data.len());
+        assert_ne!(len, 0);
 
-        Ok(())
+        Ok(usize::from(len))
     }
 
     /// Get current limit for OPTIGA_TRUST_M in mA (6mA default, 15mA maximum)
     pub fn get_current_limit(&mut self) -> Result<u8, OptigaStatus> {
         let mut set_current: [u8; 1] = [0];
         unsafe {
-            self.get_generic_data(OID::CurrentLimitation, &mut set_current)?;
+            self.get_generic_data(OID::CurrentLimitation, &mut set_current, None)?;
         }
 
         Ok(set_current[0])
@@ -165,7 +182,11 @@ impl OptigaM {
         defmt::info!("mA: {}", &milliamps);
 
         unsafe {
-            self.set_generic_data(OID::CurrentLimitation, core::slice::from_ref(&milliamps))?;
+            self.set_generic_data(
+                OID::CurrentLimitation,
+                core::slice::from_ref(&milliamps),
+                None,
+            )?;
         }
 
         debug_assert!(self.get_current_limit()? == milliamps);
