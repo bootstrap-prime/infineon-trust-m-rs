@@ -13,6 +13,7 @@ Rust API over infineon's optiga-trust-m host stack.
 - Chip hibernation
 - Mock library implementation for testing elsewhere
 - decompose method for SE to turn struct back into components
+- secure counter
 
 Stretch goals (not necessary, likely not implemented in the interests of time):
 - AES encryption handling, conforming to rust-crypto/cipher
