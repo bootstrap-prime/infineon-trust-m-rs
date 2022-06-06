@@ -23,25 +23,20 @@ use core::fmt::Debug;
 use embedded_hal::blocking::i2c::{Read, Write};
 use embedded_hal::digital::v2::OutputPin;
 
-pub struct OptigaTrustM<RSTPin, VCCPin, I2CPin>
+pub struct OptigaTrustM<RSTPin, I2CPin>
 where
     RSTPin: OutputPin,
-    VCCPin: OutputPin,
     I2CPin: Write + Read,
     <I2CPin as Write>::Error: Debug,
     <I2CPin as Read>::Error: Debug,
 {
     i2c: I2CPin,
     rst: RSTPin,
-    pwr: VCCPin,
 }
 
 trait OptigaResources {
     fn set_rst_high(&mut self) -> bool;
     fn set_rst_low(&mut self) -> bool;
-
-    fn set_pwr_high(&mut self) -> bool;
-    fn set_pwr_low(&mut self) -> bool;
 
     fn read_i2c(&mut self, addr: u8, data: &mut [u8]) -> bool;
     fn write_i2c(&mut self, addr: u8, data: &[u8]) -> bool;
@@ -53,10 +48,9 @@ enum VDDorRST {
     Rst = 1,
 }
 
-impl<RSTPin, VCCPin, I2CPin> OptigaResources for OptigaTrustM<RSTPin, VCCPin, I2CPin>
+impl<RSTPin, I2CPin> OptigaResources for OptigaTrustM<RSTPin, I2CPin>
 where
     RSTPin: OutputPin,
-    VCCPin: OutputPin,
     I2CPin: Write + Read,
     <I2CPin as Write>::Error: Debug,
     <I2CPin as Read>::Error: Debug,
@@ -66,13 +60,6 @@ where
     }
     fn set_rst_low(&mut self) -> bool {
         self.rst.set_low().is_ok()
-    }
-
-    fn set_pwr_high(&mut self) -> bool {
-        self.pwr.set_high().is_ok()
-    }
-    fn set_pwr_low(&mut self) -> bool {
-        self.pwr.set_low().is_ok()
     }
 
     fn read_i2c(&mut self, addr: u8, data: &mut [u8]) -> bool {
@@ -107,10 +94,9 @@ where
 // https://github.com/Infineon/arduino-optiga-trust-m/blob/master/src/optiga_trustm/pal_os_event_arduino.cpp
 // https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
 
-unsafe impl<RSTPin, VCCPin, I2CPin> Send for OptigaTrustM<RSTPin, VCCPin, I2CPin>
+unsafe impl<RSTPin, I2CPin> Send for OptigaTrustM<RSTPin, I2CPin>
 where
     RSTPin: OutputPin,
-    VCCPin: OutputPin,
     I2CPin: Write + Read,
     <I2CPin as Write>::Error: Debug,
     <I2CPin as Read>::Error: Debug,
@@ -125,10 +111,9 @@ use alloc::boxed::Box;
 static mut OPTIGA_TRUST_M_RESOURCES: Option<Box<dyn OptigaResources + Send>> = None;
 
 #[allow(no_mangle_generic_items)]
-impl<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static> OptigaTrustM<RSTPin, VCCPin, I2CPin>
+impl<RSTPin: 'static, I2CPin: 'static> OptigaTrustM<RSTPin, I2CPin>
 where
     RSTPin: OutputPin,
-    VCCPin: OutputPin,
     I2CPin: Write + Read,
     <I2CPin as Write>::Error: Debug,
     <I2CPin as Read>::Error: Debug,
@@ -136,11 +121,11 @@ where
     ///# Safety
     /// users will need to preconfigure the systick timer
     /// users cannot call this function multiple times, meaning only one instance of this library can exist at a time
-    pub unsafe fn setup_new(rst: RSTPin, pwr: VCCPin, i2c: I2CPin) {
+    pub unsafe fn setup_new(rst: RSTPin, i2c: I2CPin) {
         // user will need to configure the systick timer
         match &OPTIGA_TRUST_M_RESOURCES {
             Some(_) => panic!("Optiga Trust M already defined! Cannot use two modules at the same time due to FFI nonsense."),
-            None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst, pwr })),
+            None => OPTIGA_TRUST_M_RESOURCES = Some(Box::new(OptigaTrustM { i2c, rst })),
         }
     }
 

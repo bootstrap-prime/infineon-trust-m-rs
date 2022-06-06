@@ -63,7 +63,7 @@ mod tests {
         let gpioa = dp.GPIOA.split();
         let gpiob = dp.GPIOB.split();
 
-        let tpm_periphs = {
+        let (tpm_rst, tpm_i2c) = {
             // these are left undefined, may be implemented in the future
             let rst = gpioa.pa0.into_push_pull_output().erase();
             let pwr = gpioa.pa1.into_push_pull_output().erase();
@@ -79,10 +79,10 @@ mod tests {
                 .internal_pull_up(true)
                 .set_open_drain();
 
-            (rst, pwr, I2c::new(dp.I2C1, (scl, sda), 100.khz(), &clocks))
+            (rst, I2c::new(dp.I2C1, (scl, sda), 100.khz(), &clocks))
         };
 
-        let device = optiga_m::OptigaM::new(tpm_periphs.0, tpm_periphs.1, tpm_periphs.2);
+        let device = optiga_m::OptigaM::new(tpm_rst, tpm_i2c);
 
         super::TestPeripherals {
             tpm_periphs: device,

@@ -240,14 +240,9 @@ impl OptigaM {
     }
 
     /// Builds and returns a new instance of the SE. Only one device should be connected to the microcontroller at a time, and only one device can be used at a time.
-    pub fn new<RSTPin: 'static, VCCPin: 'static, I2CPin: 'static>(
-        rst: RSTPin,
-        pwr: VCCPin,
-        i2c: I2CPin,
-    ) -> OptigaM
+    pub fn new<RSTPin: 'static, I2CPin: 'static>(rst: RSTPin, i2c: I2CPin) -> OptigaM
     where
         RSTPin: OutputPin,
-        VCCPin: OutputPin,
         I2CPin: Write + Read,
         <I2CPin as Write>::Error: Debug,
         <I2CPin as Read>::Error: Debug,
@@ -255,7 +250,7 @@ impl OptigaM {
         use optiga_m_sys::OptigaTrustM;
 
         unsafe {
-            OptigaTrustM::setup_new(rst, pwr, i2c);
+            OptigaTrustM::setup_new(rst, i2c);
         }
 
         #[cfg(not(test))]
