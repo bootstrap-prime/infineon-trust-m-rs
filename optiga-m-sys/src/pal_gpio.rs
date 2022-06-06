@@ -31,8 +31,9 @@ pub extern "C" fn pal_gpio_set_high(_p_gpio_context: *const pal_gpio_t) {
             .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
         match pin {
-            1 => unreachable!("vcc gpio control is not enabled"),
-            2 => periph.as_mut().set_rst_high(),
+            2 => {
+                periph.as_mut().set_rst_high();
+            }
             e => panic!(
                 "value {} was not a configured value, memory mangling has failed!",
                 e
@@ -58,8 +59,9 @@ pub extern "C" fn pal_gpio_set_low(_p_gpio_context: *const pal_gpio_t) {
             .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
         match pin {
-            1 => unreachable!("vcc gpio control is not enabled"),
-            2 => periph.as_mut().set_rst_low(),
+            2 => {
+                periph.as_mut().set_rst_low();
+            }
             e => panic!(
                 "value {} was not a configured value, memory mangling has failed!",
                 e
