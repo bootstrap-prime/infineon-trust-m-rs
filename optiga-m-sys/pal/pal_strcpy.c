@@ -1,12 +1,3 @@
-#include <string.h>
-
-char *strcat(char *restrict dest, const char *restrict src)
-{
-	strcpy(dest + strlen(dest), src);
-	return dest;
-}
-
-
 #include "printf.h"
 
 #include <stdio.h>
@@ -55,9 +46,3 @@ char *strcpy(char *restrict dest, const char *restrict src)
 	return dest;
 #endif
 }
-
-
-/* int vsprintf(char *restrict s, const char *restrict fmt, va_list ap) */
-/* { */
-/* 	return vsnprintf(s, INT_MAX, fmt, ap); */
-/* } */

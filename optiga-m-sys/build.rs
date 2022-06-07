@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut builder = cc::Build::new();
 
-    let _builder = builder
+    let builder = builder
         .flag("-std=c11")
         .flag("-Wno-unused")
         .flag("-Wno-cast-function-type")
@@ -74,8 +74,15 @@ fn main() -> anyhow::Result<()> {
         .file("printf/printf.c")
         .file("pal/pal_os_lock.c")
         .file("pal/pal_configures.c")
-        .file("pal/pal_os_datastore.c")
-        .file("pal/pal_string.c")
+        .file("pal/pal_os_datastore.c");
+
+    #[cfg(feature = "c_stubs-strcat")]
+    let builder = builder.file("pal/pal_strcat.c");
+
+    #[cfg(feature = "c_stubs-strcpy")]
+    let builder = builder.file("pal/pal_strcpy.c");
+
+    builder
         .define("OPTIGA_LIB_EXTERNAL", "\"optiga_lib_config_external.h\"")
         .files(
             walkdir::WalkDir::new("optiga-trust-m/optiga/")

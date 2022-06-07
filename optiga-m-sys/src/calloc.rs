@@ -27,6 +27,7 @@ pub unsafe extern "C" fn pal_os_free(ptr: *mut cty::c_void) {
 /// # Safety
 /// s must be a valid pointer to a c like string.
 #[no_mangle]
+#[cfg(feature = "c_stubs-strlen")]
 pub unsafe extern "C" fn strlen(s: *const cty::c_char) -> usize {
     let mut n = 0;
     let mut s = s;

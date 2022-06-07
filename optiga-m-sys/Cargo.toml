@@ -22,4 +22,9 @@ hashbrown = "0.12.0"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 
 [features]
+default = ["c_stubs"]
 tester = []
+c_stubs = ["c_stubs-strcat", "c_stubs-strcpy", "c_stubs-strlen"]
+c_stubs-strcat = []
+c_stubs-strcpy = []
+c_stubs-strlen = []
