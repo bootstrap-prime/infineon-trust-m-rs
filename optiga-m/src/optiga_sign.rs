@@ -94,6 +94,7 @@ impl OptigaM {
         let mut public_key: [u8; 100] = [0; 100];
         let mut public_key_len = public_key.len().try_into().unwrap();
 
+        #[cfg(not(any(test, feature = "tester")))]
         defmt::trace!("setting metadata");
 
         let metadata: [u8; 8] = [0x20, 0x06, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00];
@@ -107,6 +108,7 @@ impl OptigaM {
             )
         })?;
 
+        #[cfg(not(any(test, feature = "tester")))]
         defmt::trace!("generating keypair");
 
         call_optiga_func(|| unsafe {

@@ -253,7 +253,7 @@ impl OptigaM {
             OptigaTrustM::setup_new(rst, i2c);
         }
 
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "tester")))]
         defmt::trace!("periph setup");
 
         let lib_util = unsafe {
@@ -264,7 +264,7 @@ impl OptigaM {
             ))
             .expect("optiga_util_create() returned a null pointer");
 
-            #[cfg(not(test))]
+            #[cfg(not(any(test, feature = "tester")))]
             defmt::trace!("lib util created");
 
             lib_util
