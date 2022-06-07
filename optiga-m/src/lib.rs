@@ -353,7 +353,6 @@ mod tests {
             PinTransaction::set(State::Low),
             PinTransaction::set(State::High),
         ]);
-        let vccpin = PinMock::new(&[]);
         let i2cpin = I2CMock::new(&[
             I2CTransaction::write(48, vec![132]),
             I2CTransaction::read(48, vec![0, 0, 1, 144]),
@@ -459,7 +458,7 @@ mod tests {
         }
         let known_good_hash_result = Digest::finalize(known_hash);
 
-        let mut device = OptigaM::new(rstpin, vccpin, i2cpin);
+        let mut device = OptigaM::new(rstpin, i2cpin);
 
         let mut optiga_hash_result = [0; 32];
 
