@@ -53,7 +53,9 @@ pub extern "C" fn pal_os_event_trigger_registered_callback() {
 }
 
 /// # Safety
-/// callback must be Some function pointer, callback_args must be a pointer to a valid non-null context object, and p_pal_os_event must be a valid pointer to an initialized location in memory for storage of the resulting pal_os_event.
+/// callback must be Some function pointer, callback_args must be a pointer to a valid non-null context object,
+/// and p_pal_os_event must be a valid pointer to an initialized location in memory for storage of the resulting
+/// pal_os_event.
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     p_pal_os_event: *mut cbindings::pal_os_event_t,
