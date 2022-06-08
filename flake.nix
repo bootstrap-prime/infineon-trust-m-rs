@@ -67,9 +67,14 @@
               valgrind
             ];
 
-            LD_LIBRARY_PATH = "${pkgs.lib.makeLibraryPath [
-              target-build-pkgs.llvmPackages_13.clang-unwrapped.lib
-            ]}:$LD_LIBRARY_PATH";
+            shellHook = ''
+              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
+                target-build-pkgs.llvmPackages_13.clang-unwrapped.lib
+              ]}";
+            '';
+
+            LIBC_PATH = "${pkgs.glibc_multi.dev}/include/";
+            STDDEF_PATH = "${target-build-pkgs.llvmPackages_13.clang-unwrapped.lib}/lib/clang/13.0.1/include/";
 
             LIBCLANG_PATH = "${target-build-pkgs.llvmPackages_13.clang-unwrapped.lib}/lib";
 

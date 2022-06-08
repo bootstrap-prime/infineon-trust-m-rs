@@ -18,6 +18,8 @@ fn main() -> anyhow::Result<()> {
         .header("optiga-trust-m/optiga/include/optiga/pal/pal_gpio.h")
         .clang_arg(format!("--target={}", target))
         .clang_arg("-Ioptiga-trust-m/optiga/include/")
+        .clang_arg(format!("-I{}", env!("LIBC_PATH")).as_str())
+        .clang_arg(format!("-I{}", env!("STDDEF_PATH")).as_str())
         .detect_include_paths(true)
         .layout_tests(true)
         .use_core()
