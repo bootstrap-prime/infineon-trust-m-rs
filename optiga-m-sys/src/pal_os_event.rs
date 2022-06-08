@@ -30,7 +30,7 @@ pub extern "C" fn pal_os_event_destroy(_event: *mut cbindings::pal_os_event_t) {
 #[no_mangle]
 pub unsafe extern "C" fn pal_os_event_create(
     callback: cbindings::register_callback,
-    callback_args: *mut cty::c_void,
+    callback_args: *mut c_void,
 ) -> *mut cbindings::pal_os_event_t {
     let event = &mut PAL_OS_EVENT_0.unwrap() as *mut cbindings::pal_os_event_t;
 
@@ -60,7 +60,7 @@ pub extern "C" fn pal_os_event_trigger_registered_callback() {
 pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     p_pal_os_event: *mut cbindings::pal_os_event_t,
     callback: cbindings::register_callback,
-    callback_args: *mut cty::c_void,
+    callback_args: *mut c_void,
     time_us: u32,
 ) {
     assert!(!p_pal_os_event.is_null());
@@ -70,7 +70,7 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
     os_event.callback_registered = callback;
     os_event.callback_ctx = callback_args;
 
-    struct CallbackCtx(NonNull<cty::c_void>);
+    struct CallbackCtx(NonNull<c_void>);
     unsafe impl Send for CallbackCtx {}
     unsafe impl Sync for CallbackCtx {}
     impl CallbackCtx {
@@ -110,7 +110,7 @@ pub unsafe extern "C" fn pal_os_event_register_callback_oneshot(
 pub unsafe extern "C" fn pal_os_event_start(
     p_pal_os_event: *mut cbindings::pal_os_event_t,
     callback: cbindings::register_callback,
-    callback_args: *mut cty::c_void,
+    callback_args: *mut c_void,
 ) {
     if let Some(ref mut os_event) = p_pal_os_event.as_mut() {
         if os_event.is_event_triggered == false as u8 {
