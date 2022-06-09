@@ -31,6 +31,7 @@ pub extern "C" fn pal_gpio_set_high(_p_gpio_context: *const pal_gpio_t) {
             .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
         match pin {
+            1 => (),
             2 => {
                 periph.as_mut().set_rst_high();
             }
@@ -59,6 +60,7 @@ pub extern "C" fn pal_gpio_set_low(_p_gpio_context: *const pal_gpio_t) {
             .expect("OPTIGA_TRUST_M_RESOURCES was not initialized.");
 
         match pin {
+            1 => (),
             2 => {
                 periph.as_mut().set_rst_low();
             }
