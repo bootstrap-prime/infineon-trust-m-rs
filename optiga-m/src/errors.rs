@@ -186,6 +186,13 @@ impl From<u16> for OptigaStatus {
     }
 }
 
+pub fn convert_error(returned_status: u16) -> Result<(), OptigaStatus> {
+    match returned_status.into() {
+        OptigaStatus::Success(_) => Ok(()),
+        e => Err(e),
+    }
+}
+
 pub unsafe fn handle_error(returned_status: u16) -> Result<(), OptigaStatus> {
     match returned_status.into() {
         OptigaStatus::Success(_) => {

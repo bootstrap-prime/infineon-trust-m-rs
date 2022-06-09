@@ -5,7 +5,7 @@ mod optiga_hash;
 mod optiga_rand;
 mod optiga_sign;
 
-use errors::{call_optiga_func, handle_error, optiga_util_callback};
+use errors::{call_optiga_func, convert_error, optiga_util_callback};
 pub use errors::{CmdError, CommsError, CryptError, DeviceError, OptigaStatus, UtilError};
 pub use optiga_hash::*;
 pub use optiga_sign::*;
@@ -322,7 +322,9 @@ impl OptigaM {
             }
         }
 
-        unsafe { handle_error(pal_return_status) }
+        assert!(recv_buffer == [0; 4]);
+
+        unsafe { convert_error(pal_return_status) }
     }
 
     // pub fn check_chip() -> Result<bool, OptigaStatus> {
