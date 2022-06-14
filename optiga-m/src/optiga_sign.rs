@@ -30,11 +30,31 @@ pub enum ECCKeySlots {
     ECCSlot4 = OID::DevicePrikey4 as u32,
 }
 
+impl From<ECCKeySlots> for OID {
+    fn from(oid: ECCKeySlots) -> OID {
+        match oid {
+            ECCKeySlots::ECCSlot1 => OID::DevicePrikey1,
+            ECCKeySlots::ECCSlot2 => OID::DevicePrikey2,
+            ECCKeySlots::ECCSlot3 => OID::DevicePrikey3,
+            ECCKeySlots::ECCSlot4 => OID::DevicePrikey4,
+        }
+    }
+}
+
 #[repr(u32)]
 #[derive(Copy, Clone)]
 pub enum RSAKeySlots {
     RSASlot1 = OID::DevicePrikeyRSA1 as u32,
     RSASlot2 = OID::DevicePrikeyRSA2 as u32,
+}
+
+impl From<RSAKeySlots> for OID {
+    fn from(oid: RSAKeySlots) -> OID {
+        match oid {
+            RSAKeySlots::RSASlot1 => OID::DevicePrikeyRSA1,
+            RSAKeySlots::RSASlot2 => OID::DevicePrikeyRSA2,
+        }
+    }
 }
 
 /// This metadata struct is based on metadata handling in <https://github.com/Infineon/python-optiga-trust>
@@ -99,14 +119,9 @@ impl OptigaM {
 
         let metadata: [u8; 8] = [0x20, 0x06, 0xD0, 0x01, 0x00, 0xD3, 0x01, 0x00];
 
-        call_optiga_func(|| unsafe {
-            cbindings::optiga_util_write_metadata(
-                self.lib_util.as_ptr(),
-                slot as u16,
-                addr_of!(metadata) as *const u8,
-                metadata.len().try_into().unwrap(),
-            )
-        })?;
+        unsafe {
+            self.set_metadata(slot.into(), &metadata)?;
+        }
 
         #[cfg(not(any(test, feature = "tester")))]
         defmt::trace!("generating keypair");
@@ -133,13 +148,14 @@ impl OptigaM {
 
         Ok(())
     }
-    pub fn get_keypair_rsa(
-        &mut self,
-        pair_type: RSAKeyTypes,
-        slot: RSAKeySlots,
-    ) -> Result<(), OptigaStatus> {
-        Ok(())
-    }
+
+    // pub fn get_keypair_rsa(
+    //     &mut self,
+    //     pair_type: RSAKeyTypes,
+    //     slot: RSAKeySlots,
+    // ) -> Result<(), OptigaStatus> {
+    //     Ok(())
+    // }
 
     // /// Attempts to retrieve an existing public/private keypair in a SE slot. Will generate a keypair if one is not already available.
     // pub fn get_keypair_ecc(&mut self, pair_type: KeyType, slot: KeySlot) {}
