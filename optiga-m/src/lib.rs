@@ -3,6 +3,8 @@
 mod errors;
 mod optiga_hash;
 mod optiga_rand;
+#[allow(dead_code)]
+// TODO: eliminate this dead code allowance once signing works
 mod optiga_sign;
 
 use errors::{call_optiga_func, convert_error, optiga_util_callback};
@@ -136,6 +138,8 @@ impl OptigaM {
     }
 
     /// Read the metadata of an OID and write to the provided byteslice. returns the number of bytes in the provided byteslice used.
+    // TODO: eliminate this if it's unused
+    #[allow(dead_code)]
     unsafe fn get_metadata(&mut self, oid: OID, data: &mut [u8]) -> Result<usize, OptigaStatus> {
         let mut len: u16 = data.len() as u16;
 
@@ -324,7 +328,7 @@ impl OptigaM {
 
         assert!(recv_buffer == [0; 4]);
 
-        unsafe { convert_error(pal_return_status) }
+        convert_error(pal_return_status)
     }
 
     // pub fn check_chip() -> Result<bool, OptigaStatus> {

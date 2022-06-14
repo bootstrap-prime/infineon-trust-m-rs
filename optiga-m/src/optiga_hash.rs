@@ -2,7 +2,7 @@ extern crate alloc;
 
 use crate::call_optiga_func;
 use crate::cbindings::{
-    self, hash_data_from_host, hash_data_from_host_t, optiga_hash_context, optiga_hash_context_t,
+    self, hash_data_from_host, hash_data_from_host_t, optiga_hash_context,
     optiga_hash_type_OPTIGA_HASH_TYPE_SHA_256, OPTIGA_CRYPT_HOST_DATA,
 };
 use crate::OptigaM;
@@ -18,6 +18,9 @@ const OPTIGA_SHA256_CONTEXT_LENGTH: usize =
 
 /// A wrapper struct for using the SE to compute Sha256 hashes.
 pub struct OptigaSha256<'a> {
+    #[allow(dead_code)]
+    // TODO: determine if this context object should take ownership of the periph and return it upon a decompose
+    // if so, eliminate this dead_code allowance.
     periph: &'a mut OptigaM,
     #[allow(dead_code)]
     // this context object must exist and be valid for the attached c library
