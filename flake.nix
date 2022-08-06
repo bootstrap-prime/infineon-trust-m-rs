@@ -6,6 +6,12 @@
     nixpkgs-21.url = "github:NixOS/nixpkgs/nixos-21.11";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url  = "github:numtide/flake-utils";
+
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs@{ self, flake-utils, nixpkgs, rust-overlay, nixpkgs-21, ... }:
@@ -20,6 +26,11 @@
         };
         target-pkgs = pkgs.pkgsCross.armhf-embedded;
         target-build-pkgs = target-pkgs.buildPackages;
+        rust-custom-toolchain = (pkgs.rust-bin.selectLatestNightlyWith (toolchain:
+          toolchain.default.override {
+            extensions = [ "rust-src" "rustfmt" "llvm-tools-preview" "rust-analyzer-preview" "miri" ];
+            targets = [ "thumbv7em-none-eabihf" ];
+          }));
       in
         rec {
           probe-run = pkgs.rustPlatform.buildRustPackage rec {
@@ -49,34 +60,36 @@
             };
           };
 
-          devShell = let
-            rust = (pkgs.rust-bin.selectLatestNightlyWith (toolchain:
-              toolchain.default.override {
-                extensions = [ "rust-src" "rustfmt" "llvm-tools-preview" "rust-analyzer-preview" "miri" ];
-                targets = [ "thumbv7em-none-eabihf" ];
-              }));
-          in target-pkgs.mkShell {
+          devShell = target-pkgs.mkShell {
             buildInputs = [
               pkgs.glibc_multi
             ];
 
             nativeBuildInputs = with pkgs; [
-              rust
+              rust-custom-toolchain
               probe-run
 
               valgrind
             ];
 
-            shellHook = ''
-              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
-                target-build-pkgs.llvmPackages_13.clang-unwrapped.lib
-              ]}";
-            '';
+            # manually define llvm lib location for bindgen (here too?)
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
-            LIBC_PATH = "${pkgs.glibc_multi.dev}/include/";
-            STDDEF_PATH = "${target-build-pkgs.llvmPackages_13.clang-unwrapped.lib}/lib/clang/13.0.1/include/";
+            # cflags interacts with cc-rs to inject libc include paths
+            CFLAGS = [ "-I${pkgs.glibc.dev}/include/" ];
+            # bindgen_extra_clang_args is almost identical, but interacts with bindgen to inject libc include paths
+            BINDGEN_EXTRA_CLANG_ARGS = [
+              "-I${pkgs.glibc.dev}/include/"
+              "-I${pkgs.llvmPackages_13.clang-unwrapped.lib}/lib/clang/13.0.1/include/"
+              "-I${pkgs.llvmPackages.libclang.lib}/lib"
+            ];
 
-            LIBCLANG_PATH = "${target-build-pkgs.llvmPackages_13.clang-unwrapped.lib}/lib";
+            LD_LIBRARY_PATH = "${
+              pkgs.lib.makeLibraryPath [
+                # llvm with the embedded target arch
+                pkgs.llvmPackages.libclang.lib
+              ]
+            }";
 
             DEFMT_LOG = "trace";
 
@@ -84,25 +97,60 @@
             RUST_BACKTRACE = 1;
           };
 
-          checks = {
-            asanbuild_optigam = pkgs.rustPlatform.buildRustPackage {
-              pname = "optiga-m";
-              version = "2022-06-07";
+          checks = let
+            craneLib =
+              (inputs.crane.mkLib pkgs).overrideToolchain rust-custom-toolchain;
+            # cargoArtifacts = craneLib.buildDepsOnly {
+            #   inherit src;
+            #   hardeningDisable = [ "all" ];
 
-              buildAndTestSubdir = "./optiga-m";
+            #   # manually define llvm lib location for bindgen (here too?)
+            #   LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+            #   # cflags interacts with cc-rs to inject libc include paths
+            #   CFLAGS = [ "-I${pkgs.glibc.dev}/include/" ];
+            #   # bindgen_extra_clang_args is almost identical, but interacts with bindgen to inject libc include paths
+            #   BINDGEN_EXTRA_CLANG_ARGS = [
+            #     "-I${pkgs.glibc.dev}/include/"
+            #     "-I${pkgs.llvmPackages_13.clang-unwrapped.lib}/lib/clang/13.0.1/include/"
+            #   ];
+            # };
+            common-build-args = {
               src = ./.;
+              hardeningDisable = [ "all" ];
 
-              cargoLock = {
-                lockFile = ./Cargo.lock;
-              };
-              # cargoSha256 = pkgs.lib.fakeSha256;
+              # manually define llvm lib location for bindgen (here too?)
+              LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 
-              CFLAGS = ["-fsanitize=address"];
-              CC = "gcc";
-              RUSTFLAGS = ["-Zsanitizer=address"];
+              LD_LIBRARY_PATH = "${
+                pkgs.lib.makeLibraryPath [
+                  # llvm with the embedded target arch
+                  pkgs.llvmPackages.libclang.lib
+                ]
+              }";
 
-              release = true;
+              # cflags interacts with cc-rs to inject libc include paths
+              CFLAGS = [ "-I${pkgs.glibc.dev}/include/" ];
+              # bindgen_extra_clang_args is almost identical, but interacts with bindgen to inject libc include paths
+              BINDGEN_EXTRA_CLANG_ARGS = [
+                "-I${pkgs.glibc.dev}/include/"
+                "-I${pkgs.llvmPackages_13.clang-unwrapped.lib}/lib/clang/13.0.1/include/"
+              ];
+
             };
+            cargoArtifacts = craneLib.buildDepsOnly ({
+              cargoBuildCommand = "cargo build --release -p optiga-m";
+            } // common-build-args);
+
+            build-tests = craneLib.cargoNextest ({
+              cargoArtifacts = null;
+              RUSTFLAGS = [ "-Zsanitizer=address" ];
+
+              cargoNextestExtraArgs = "-p optiga-m";
+              doInstallCargoArtifacts = true;
+            } // common-build-args);
+          in {
+            inherit build-tests;
           };
         }
     );

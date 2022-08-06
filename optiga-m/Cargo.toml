@@ -16,7 +16,7 @@ digest = { version = "0.10.3", default-features = false }
 embedded-hal = "0.2.7"
 num-derive = "0.3.3"
 num_enum = { version = "0.5.6", default-features = false, features = ["complex-expressions"] }
-optiga-m-sys = { path = "../optiga-m-sys", optional = true, default-features = false }
+optiga-m-sys = { version = "0.1.0", path = "../optiga-m-sys", optional = true, default-features = false }
 rand_core = "0.6.3"
 signature = { version = "1.5.0", default-features = false }
 
