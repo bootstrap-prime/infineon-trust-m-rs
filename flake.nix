@@ -146,7 +146,7 @@
               cargoArtifacts = null;
               RUSTFLAGS = [ "-Zsanitizer=address" ];
 
-              cargoNextestExtraArgs = "-p optiga-m";
+              cargoNextestExtraArgs = "-p optiga-m --target=x86_64-unknown-linux-gnu";
               doInstallCargoArtifacts = true;
             } // common-build-args);
           in {
